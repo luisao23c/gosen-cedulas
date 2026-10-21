@@ -132,6 +132,12 @@ export default function FormularioPrestamo({
                   : 'Solo integrantes de este ministerio. Quien lo recibe responde por él.'
             }
           >
+            {/* MUI exige al menos un hijo en un select: sin equipo elegido o sin integrantes va uno deshabilitado */}
+            {miembrosDelEquipo.length === 0 ? (
+              <MenuItem value="" disabled>
+                Sin integrantes disponibles
+              </MenuItem>
+            ) : null}
             {miembrosDelEquipo.map((cuenta) => (
               <MenuItem key={cuenta.id} value={cuenta.id}>
                 {cuenta.nombre} · {cuenta.rolNombre}

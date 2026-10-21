@@ -106,6 +106,18 @@ export interface FilaListado {
   grupo?: string
 }
 
+/**
+ * La columna de acciones de la tabla se queda fija a la derecha: con muchas columnas la tabla
+ * se desplaza de lado y los botones no pueden quedar escondidos fuera de la vista.
+ */
+const columnaAcciones = {
+  position: 'sticky',
+  right: 0,
+  zIndex: 1,
+  bgcolor: 'background.paper',
+  boxShadow: `-8px 0 8px -8px ${colores.borde}`,
+} as const
+
 /** Ancho del panel de acciones que aparece al deslizar la fila. */
 const ANCHO_ACCIONES = 88
 
@@ -676,7 +688,11 @@ export default function ListadoResponsivo({
             {etiquetas.map((etiqueta) => (
               <TableCell key={etiqueta}>{etiqueta}</TableCell>
             ))}
-            {accionesCabecera ? <TableCell align="right">Acciones</TableCell> : null}
+            {accionesCabecera ? (
+              <TableCell align="right" sx={{ ...columnaAcciones, bgcolor: 'action.hover' }}>
+                Acciones
+              </TableCell>
+            ) : null}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -708,7 +724,7 @@ export default function ListadoResponsivo({
                         ? undefined
                         : {
                             whiteSpace: 'nowrap',
-                            maxWidth: 280,
+                            maxWidth: 220,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                           }
@@ -737,7 +753,7 @@ export default function ListadoResponsivo({
                   </TableCell>
                 ))}
                 {accionesCabecera ? (
-                  <TableCell align="right">
+                  <TableCell align="right" sx={columnaAcciones}>
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
                       {fila.acciones}
                     </Box>

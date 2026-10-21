@@ -16,7 +16,8 @@ const ALCANCES = [
 /** Marca de la aplicación: el logo y su lema. Se usa en las dos columnas. */
 function Marca({ sobreMarca = false }: { sobreMarca?: boolean }) {
   return (
-    <Stack spacing={0.75}>
+    // alignItems: sin esto el logo se estira al ancho de la columna y se deforma
+    <Stack spacing={0.75} sx={{ alignItems: 'flex-start' }}>
       <LogoGosen alto={30} variante={sobreMarca ? 'claro' : 'oscuro'} />
       <Typography variant="caption" sx={{ color: 'inherit', opacity: 0.8 }}>
         Células y ramas

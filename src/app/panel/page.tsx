@@ -1,5 +1,6 @@
 import { Box, Button, CardActionArea, Chip, Paper, Stack, Typography } from '@mui/material'
 import AccountTreeIcon from '@mui/icons-material/AccountTree'
+import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism'
 import AssignmentIcon from '@mui/icons-material/Assignment'
 import PersonPinCircleIcon from '@mui/icons-material/PersonPinCircle'
 import GroupIcon from '@mui/icons-material/Group'
@@ -120,6 +121,11 @@ export default async function Panel() {
   const cumpleanos = cumpleanosProximos(conFechaNacimiento, 30).slice(0, 5)
 
   const hayAlgo = veRamas || veCelulas || veUsuarios
+  // Quien solo sirve en un ministerio (servidor, encargado) no ve ramas ni células, pero sí tiene su espacio
+  const veMinisterio =
+    rolPuede(usuario, 'ver', 'ministerio') ||
+    rolPuede(usuario, 'ver', 'equipo') ||
+    rolPuede(usuario, 'ver', 'evento')
   const puedeCrearRama = puede(usuario, 'crear', 'rama')
   // Quien puede registrar integrantes tiene su atajo directo al lobby
   const puedeRegistrar = rolPuede(usuario, 'crear', 'integrante')
@@ -139,6 +145,12 @@ export default async function Panel() {
       href: '/panel/cumpleanos',
       icono: <CakeIcon fontSize="small" />,
       visible: veIntegrantes,
+    },
+    {
+      etiqueta: 'Ministerio',
+      href: '/panel/ministerio',
+      icono: <VolunteerActivismIcon fontSize="small" />,
+      visible: veMinisterio,
     },
     { etiqueta: 'Usuarios', href: '/panel/usuarios', icono: <GroupIcon fontSize="small" />, visible: veUsuarios },
   ].filter((acceso) => acceso.visible)
@@ -234,6 +246,18 @@ export default async function Panel() {
             />
           ) : null}
         </Box>
+      ) : veMinisterio ? (
+        <Paper variant="outlined" sx={{ p: 3 }}>
+          <Stack spacing={1.5} sx={{ alignItems: 'flex-start' }}>
+            <Typography variant="subtitle1">Tu espacio de servicio</Typography>
+            <Typography color="text.secondary">
+              Aquí ves los equipos, los eventos en los que sirves y lo que tienes a tu cargo.
+            </Typography>
+            <Button href="/panel/ministerio" variant="contained" size="large">
+              Ir al ministerio
+            </Button>
+          </Stack>
+        </Paper>
       ) : (
         <Paper variant="outlined" sx={{ p: 3 }}>
           <Typography variant="subtitle1">Tu rol todavía no tiene permisos</Typography>
