@@ -1,0 +1,193 @@
+import type { RowDataPacket } from 'mysql2'
+import { consultar, consultarUno, ejecutar } from '@/lib/db/conexion'
+import { filtroMinisterio, type IdentidadMinisterio } from '@/lib/db/alcance'
+import type { ConservacionEquipo, Prestamo } from '@/types/domain'
+import { aInstante } from '@/lib/servicio'
+
+/**
+ * Acceso a datos de `prestamo`.
+ *
+ * Un préstamo abierto es el que tiene `devuelto_en` NULL: mientras siga
+ * abierto, el equipo está fuera con esa persona. Al cerrarlo se guarda qué día
+ * y a qué hora volvió y en qué estado lo recibió quien lo recibió.
+ *
+ * Las horas se escriben como TEXTO de reloj de pared (ver lib/servicio.ts): al
+ * enviar un `Date` de JavaScript, mysql2 lo desplaza a UTC y «09:32» se
+ * guardaría como «15:32».
+ */
+
+interface FilaPrestamo extends RowDataPacket {
+  id: number
+  equipo_id: number
+  ministerio_id: number
+  responsable_id: number
+  asignado_a_id: number | null
+  prestado_en: Date | string
+  devuelto_en: Date | string | null
+  estado_entrega: ConservacionEquipo
+  estado_devolucion: ConservacionEquipo | null
+  notas: string | null
+  registrado_por_id: number | null
+  equipo_nombre?: string | null
+  responsable_nombre?: string | null
+  asignado_nombre?: string | null
+  ministerio_nombre?: string | null
+}
+
+const COLUMNAS = `p.id, p.equipo_id, e.ministerio_id, p.responsable_id, p.asignado_a_id,
+  p.prestado_en, p.devuelto_en, p.estado_entrega, p.estado_devolucion, p.notas, p.registrado_por_id`
+
+const DESDE = `FROM prestamo p
+  JOIN equipo e ON e.id = p.equipo_id
+  LEFT JOIN usuario ru ON ru.id = p.responsable_id
+  LEFT JOIN usuario au ON au.id = p.asignado_a_id`
+
+function aPrestamo(fila: FilaPrestamo): Prestamo {
+  return {
+    id: fila.id,
+    equipoId: fila.equipo_id,
+    ministerioId: fila.ministerio_id,
+    responsableId: fila.responsable_id,
+    asignadoAId: fila.asignado_a_id,
+    prestadoEn: aInstante(fila.prestado_en) ?? '',
+    devueltoEn: aInstante(fila.devuelto_en),
+    estadoEntrega: fila.estado_entrega,
+    estadoDevolucion: fila.estado_devolucion,
+    notas: fila.notas,
+    registradoPorId: fila.registrado_por_id,
+    nombreEquipo: fila.equipo_nombre ?? null,
+    nombreResponsable: fila.responsable_nombre ?? null,
+    nombreAsignado: fila.asignado_nombre ?? null,
+    nombreMinisterio: fila.ministerio_nombre ?? null,
+  }
+}
+
+/** Préstamos visibles; por defecto, los que siguen abiertos. */
+export async function listarPrestamos(
+  identidad: IdentidadMinisterio,
+  opciones: { soloAbiertos?: boolean; equipoId?: number; usuarioId?: number } = {},
+): Promise<Prestamo[]> {
+  const filtro = filtroMinisterio(identidad, 'e.ministerio_id')
+  const condiciones = [filtro.sql]
+  const parametros: unknown[] = [...filtro.parametros]
+
+  if (opciones.soloAbiertos !== false) condiciones.push('p.devuelto_en IS NULL')
+  if (opciones.equipoId != null) {
+    condiciones.push('p.equipo_id = ?')
+    parametros.push(opciones.equipoId)
+  }
+  if (opciones.usuarioId != null) {
+    // Los que trae esa persona o los que tiene asignados
+    condiciones.push('(p.responsable_id = ? OR p.asignado_a_id = ?)')
+    parametros.push(opciones.usuarioId, opciones.usuarioId)
+  }
+
+  const filas = await consultar<FilaPrestamo>(
+    `SELECT ${COLUMNAS}, e.nombre AS equipo_nombre, m.nombre AS ministerio_nombre,
+            ru.nombre AS responsable_nombre, au.nombre AS asignado_nombre
+       ${DESDE}
+       JOIN ministerio m ON m.id = e.ministerio_id
+      WHERE ${condiciones.join(' AND ')}
+      ORDER BY p.devuelto_en IS NOT NULL, p.prestado_en DESC`,
+    parametros,
+  )
+  return filas.map(aPrestamo)
+}
+
+/** Préstamo por id respetando el alcance (el ministerio lo aporta el equipo). */
+export async function buscarPrestamo(
+  id: number,
+  identidad: IdentidadMinisterio,
+): Promise<Prestamo | null> {
+  const filtro = filtroMinisterio(identidad, 'e.ministerio_id')
+  const fila = await consultarUno<FilaPrestamo>(
+    `SELECT ${COLUMNAS} ${DESDE} WHERE p.id = ? AND ${filtro.sql}`,
+    [id, ...filtro.parametros],
+  )
+  return fila ? aPrestamo(fila) : null
+}
+
+/**
+ * Préstamo por id SIN filtrar alcance: para saber a qué ministerio pertenece
+ * antes de comprobar el permiso (el ámbito tiene que salir de los datos, no
+ * del id que manda el cliente).
+ */
+export async function prestamoDeRegistro(
+  id: number,
+): Promise<{ id: number; equipoId: number; ministerioId: number; devueltoEn: string | null } | null> {
+  const fila = await consultarUno<FilaPrestamo>(
+    `SELECT ${COLUMNAS} ${DESDE} WHERE p.id = ? LIMIT 1`,
+    [id],
+  )
+  return fila
+    ? {
+        id: fila.id,
+        equipoId: fila.equipo_id,
+        ministerioId: fila.ministerio_id,
+        devueltoEn: aInstante(fila.devuelto_en),
+      }
+    : null
+}
+
+/** Préstamo abierto de un equipo, si lo hay (para no prestar dos veces lo mismo). */
+export async function prestamoAbiertoDe(equipoId: number): Promise<Prestamo | null> {
+  const fila = await consultarUno<FilaPrestamo>(
+    `SELECT ${COLUMNAS} ${DESDE} WHERE p.equipo_id = ? AND p.devuelto_en IS NULL LIMIT 1`,
+    [equipoId],
+  )
+  return fila ? aPrestamo(fila) : null
+}
+
+/** Abre un préstamo: el equipo sale con alguien (una cuenta puede traer varios). */
+export async function abrirPrestamo(datos: {
+  equipoId: number
+  responsableId: number
+  asignadoAId: number | null
+  estadoEntrega: ConservacionEquipo
+  notas: string | null
+  registradoPorId: number
+}): Promise<number> {
+  const resultado = await ejecutar(
+    `INSERT INTO prestamo
+       (equipo_id, responsable_id, asignado_a_id, estado_entrega, notas, registrado_por_id)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      datos.equipoId,
+      datos.responsableId,
+      datos.asignadoAId,
+      datos.estadoEntrega,
+      datos.notas,
+      datos.registradoPorId,
+    ],
+  )
+  return resultado.insertId
+}
+
+/** Cierra el préstamo: vuelve el equipo y se anota en qué estado lo recibieron. */
+export async function cerrarPrestamo(
+  id: number,
+  datos: {
+    estadoDevolucion: ConservacionEquipo
+    notas: string | null
+    devueltoPorId: number
+  },
+): Promise<void> {
+  await ejecutar(
+    `UPDATE prestamo
+        SET devuelto_en = NOW(),
+            estado_devolucion = ?,
+            notas = COALESCE(?, notas),
+            devuelto_por_id = ?
+      WHERE id = ? AND devuelto_en IS NULL`,
+    [datos.estadoDevolucion, datos.notas, datos.devueltoPorId, id],
+  )
+}
+
+/**
+ * Borra un préstamo del historial (solo si sigue abierto: un préstamo cerrado
+ * es el registro de que el equipo volvió y no se toca).
+ */
+export async function borrarPrestamoAbierto(id: number): Promise<number> {
+  const resultado = await ejecutar(`DELETE FROM prestamo WHERE id = ? AND devuelto_en IS NULL`, [id])
+  return resultado.affectedRows
+}
