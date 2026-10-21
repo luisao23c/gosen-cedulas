@@ -10,6 +10,7 @@ import {
   CircularProgress,
   Divider,
   FormControlLabel,
+  LinearProgress,
   Paper,
   Radio,
   RadioGroup,
@@ -17,6 +18,8 @@ import {
   Typography,
 } from '@mui/material'
 import PlaceIcon from '@mui/icons-material/Place'
+import CheckIcon from '@mui/icons-material/Check'
+import CloseIcon from '@mui/icons-material/Close'
 import HowToRegIcon from '@mui/icons-material/HowToReg'
 import { guardarIntegrante } from '@/features/integrantes/acciones'
 import { ESTADO_INICIAL } from '@/features/tipos'
@@ -27,11 +30,11 @@ import { useAviso } from '@/components/AvisoProvider'
 import type { UbicacionMarcada } from '@/components/CampoUbicacion'
 import { coordenadasDe, distanciaKm, distanciaLegible } from '@/lib/geo'
 import {
+  compararCandidatas,
   evaluarCandidata,
-  ordenarPorEvaluacion,
   porIdCampos,
   porIdRespuestas,
-  resumenDeEvaluacion,
+  puntuarCandidata,
 } from '@/lib/campos'
 import type { CampoDiferenciador, CriterioCelula, RespuestaCampo } from '@/types/domain'
 
@@ -104,10 +107,16 @@ export default function RegistroLobby({
 
   const punto = React.useMemo(() => coordenadasDe(ubicacion), [ubicacion])
 
+  /** ¿La persona ya contestó algún campo? Sin respuestas, los criterios no pueden juzgar nada. */
+  const hayRespuestas = respuestas.length > 0
+
   /**
-   * Células ordenadas para recomendar: primero las que cumplen lo obligatorio,
-   * después las que suman más preferencias y, a igualdad, la más cercana.
-   * Lo que nadie contestó no cuenta como cumplido (ver lib/campos.ts).
+   * RANKING de células para esta persona, de la que mejor le queda a la que peor.
+   *
+   * Cada célula recibe un puntaje de 0 a 100 que mezcla qué tantos criterios cumple
+   * (70 %) y qué tan cerca está (30 %) —ver `puntuarCandidata` en lib/campos.ts—.
+   * Las que fallan un criterio obligatorio van después de las que sí cumplen.
+   * Lo que nadie contestó no cuenta como cumplido.
    */
   const ordenadas = React.useMemo(() => {
     const camposPorId = porIdCampos(campos)
@@ -115,32 +124,28 @@ export default function RegistroLobby({
     return celulas
       .map((celula) => {
         const suyo = coordenadasDe(celula)
+        const distancia = punto && suyo ? distanciaKm(punto, suyo) : null
+        const evaluacion =
+          celula.criterios.length > 0
+            ? evaluarCandidata(celula.criterios, camposPorId, respuestasPorId)
+            : undefined
         return {
           celula,
-          distancia: punto && suyo ? distanciaKm(punto, suyo) : null,
-          evaluacion:
-            celula.criterios.length > 0
-              ? evaluarCandidata(celula.criterios, camposPorId, respuestasPorId)
-              : undefined,
+          distancia,
+          evaluacion,
+          puntaje: puntuarCandidata(evaluacion, distancia, hayRespuestas),
         }
       })
-      .sort((a, b) => {
-        const porCriterios = ordenarPorEvaluacion(a.evaluacion, b.evaluacion)
-        if (porCriterios !== 0) return porCriterios
-        // Con el mismo puntaje, manda quien sí declaró criterios (está dicho a quién sirve)
-        const conCriterios = (b.celula.criterios.length > 0 ? 1 : 0) - (a.celula.criterios.length > 0 ? 1 : 0)
-        if (conCriterios !== 0) return conCriterios
-        return (a.distancia ?? Number.POSITIVE_INFINITY) - (b.distancia ?? Number.POSITIVE_INFINITY)
-      })
-  }, [celulas, campos, respuestas, punto])
+      .sort((a, b) => compararCandidatas(a, b, hayRespuestas))
+  }, [celulas, campos, respuestas, punto, hayRespuestas])
 
   /** ¿Alguna célula cumple todo lo obligatorio? Decide si se separan los grupos. */
-  const hayAptas = ordenadas.some((entrada) => entrada.evaluacion?.apta ?? false)
+  const hayAptas = hayRespuestas && ordenadas.some((entrada) => entrada.evaluacion?.apta ?? false)
 
-  /** La primera apta con criterios declarados; si no hay, la más cercana. */
+  /** La mejor del ranking que de verdad le sirve; si ninguna, la primera con ubicación. */
   const recomendada =
-    ordenadas.find((entrada) => entrada.evaluacion?.apta && entrada.celula.criterios.length > 0)?.celula
-      .id ?? ordenadas.find((entrada) => entrada.distancia != null)?.celula.id
+    ordenadas.find((entrada) => !hayRespuestas || !entrada.evaluacion || entrada.evaluacion.apta)
+      ?.celula.id ?? ordenadas[0]?.celula.id
 
   // La recomendación se propone sola; la elección manual manda mientras el punto
   // (y lo contestado) siga siendo lo mismo.
@@ -257,7 +262,7 @@ export default function RegistroLobby({
                   }}
                 >
                   <Stack spacing={1}>
-                    {ordenadas.map(({ celula, distancia, evaluacion }, indice) => (
+                    {ordenadas.map(({ celula, distancia, evaluacion, puntaje }, indice) => (
                       <React.Fragment key={celula.id}>
                       {/* Separador: primero las que cumplen, después las demás */}
                       {hayAptas &&
@@ -287,61 +292,113 @@ export default function RegistroLobby({
                           control={<Radio size="small" />}
                           sx={{ width: '100%', m: 0, alignItems: 'flex-start' }}
                           label={
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, pt: 0.5 }}>
-                              <Box sx={{ flex: 1, minWidth: 160 }}>
-                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                  {celula.nombre}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
+                            <Box sx={{ display: 'flex', gap: 1.5, width: '100%', pt: 0.5 }}>
+                              {/* Posición en el ranking: 1 es la que mejor le queda */}
+                              <Box
+                                aria-label={`Lugar ${indice + 1} del ranking`}
+                                sx={{
+                                  flexShrink: 0,
+                                  display: 'grid',
+                                  placeItems: 'center',
+                                  width: 28,
+                                  height: 28,
+                                  mt: 0.25,
+                                  borderRadius: '50%',
+                                  bgcolor: indice === 0 ? 'primary.main' : 'action.selected',
+                                  color: indice === 0 ? 'primary.contrastText' : 'text.secondary',
+                                  typography: 'caption',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                {indice + 1}
+                              </Box>
+
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 600, flex: 1, minWidth: 120 }}>
+                                    {celula.nombre}
+                                  </Typography>
+                                  {distancia != null ? (
+                                    <Chip
+                                      size="small"
+                                      icon={<PlaceIcon />}
+                                      label={distanciaLegible(distancia)}
+                                    />
+                                  ) : (
+                                    <Chip size="small" variant="outlined" label="Sin ubicación" />
+                                  )}
+                                </Box>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                                   {celula.rama} · {celula.reunion}
                                 </Typography>
-                                <Typography
-                                  variant="caption"
-                                  color="text.secondary"
-                                  sx={{ display: 'block' }}
-                                >
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                                   {celula.direccion ?? 'Sin dirección registrada'}
                                 </Typography>
-                                {evaluacion ? (
-                                  <Typography
-                                    variant="caption"
-                                    color={evaluacion.apta ? 'success.main' : 'text.secondary'}
-                                    sx={{ display: 'block' }}
-                                  >
-                                    {[
-                                      resumenDeEvaluacion(evaluacion),
-                                      !evaluacion.apta && evaluacion.faltantes.length > 0
-                                        ? `falta: ${evaluacion.faltantes.slice(0, 2).join(', ')}`
-                                        : null,
-                                    ]
-                                      .filter(Boolean)
-                                      .join(' · ')}
+
+                                {/* Cuánto le queda: criterios + cercanía en una sola barra */}
+                                {hayRespuestas || punto ? (
+                                  <Box sx={{ mt: 1 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.25 }}>
+                                      <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                                        {recomendada === celula.id ? 'La que mejor le sirve' : 'Coincidencia'}
+                                      </Typography>
+                                      <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                                        {puntaje.puntaje} %
+                                      </Typography>
+                                    </Box>
+                                    <LinearProgress
+                                      variant="determinate"
+                                      value={puntaje.puntaje}
+                                      color={
+                                        !(evaluacion?.apta ?? true) && hayRespuestas
+                                          ? 'warning'
+                                          : puntaje.puntaje >= 70
+                                            ? 'success'
+                                            : 'primary'
+                                      }
+                                      aria-label={`Coincidencia de ${celula.nombre}: ${puntaje.puntaje} por ciento`}
+                                    />
+                                  </Box>
+                                ) : null}
+
+                                {/* El porqué: qué cumple (✓) y qué le falta (✗), no solo «cumple 2 de 3» */}
+                                {evaluacion && hayRespuestas ? (
+                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+                                    {evaluacion.cumplidos.map((motivo) => (
+                                      <Chip
+                                        key={`ok-${motivo}`}
+                                        size="small"
+                                        color="success"
+                                        variant="outlined"
+                                        icon={<CheckIcon />}
+                                        label={motivo}
+                                      />
+                                    ))}
+                                    {evaluacion.faltantes.map((motivo) => (
+                                      <Chip
+                                        key={`falta-${motivo}`}
+                                        size="small"
+                                        color={evaluacion.faltantesObligatorios.includes(motivo) ? 'error' : 'default'}
+                                        variant="outlined"
+                                        icon={<CloseIcon />}
+                                        label={
+                                          evaluacion.faltantesObligatorios.includes(motivo)
+                                            ? `Obligatorio: ${motivo}`
+                                            : motivo
+                                        }
+                                      />
+                                    ))}
+                                  </Box>
+                                ) : evaluacion ? (
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                                    Contesta los campos de arriba para ver cuáles cumple.
                                   </Typography>
-                                ) : null}
-                              </Box>
-                              <Stack
-                                direction="row"
-                                spacing={0.5}
-                                useFlexGap
-                                sx={{ flexWrap: 'wrap', alignItems: 'center' }}
-                              >
-                                {distancia != null ? (
-                                  <Chip
-                                    size="small"
-                                    color={indice === 0 ? 'primary' : 'default'}
-                                    icon={<PlaceIcon />}
-                                    label={distanciaLegible(distancia)}
-                                  />
                                 ) : (
-                                  <Chip size="small" variant="outlined" label="Sin ubicación" />
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                                    Sin criterios: recibe a cualquier persona.
+                                  </Typography>
                                 )}
-                                {recomendada === celula.id ? (
-                                  <Chip size="small" color="success" label="La que mejor le sirve" />
-                                ) : null}
-                                {indice === 0 && distancia != null && recomendada !== celula.id ? (
-                                  <Chip size="small" variant="outlined" label="La más cercana" />
-                                ) : null}
-                              </Stack>
+                              </Box>
                             </Box>
                           }
                         />

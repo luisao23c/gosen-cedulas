@@ -82,6 +82,7 @@ export default async function PaginaRama({ params }: { params: Promise<{ ramaId:
         chip: {
           etiqueta: celula.activa ? 'Activa' : 'Inactiva',
           tono: celula.activa ? 'success' : 'default',
+          soloTabla: celula.activa,
         },
       },
     ],    acciones: (

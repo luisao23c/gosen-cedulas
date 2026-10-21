@@ -91,6 +91,106 @@ export function enlaceMapa(latitud: number, longitud: number): string {
   return `https://www.openstreetmap.org/?mlat=${latitud}&mlon=${longitud}#map=17/${latitud}/${longitud}`
 }
 
+/** Un lugar encontrado al buscar por código postal, colonia o dirección. */
+export interface LugarEncontrado {
+  /** Texto corto para mostrar en la lista: «Centro, Torreón, Coahuila, 27000» */
+  etiqueta: string
+  latitud: number
+  longitud: number
+}
+
+/**
+ * Busca lugares por código postal, colonia o dirección (Nominatim).
+ *
+ *  · Cinco dígitos solos se tratan como CÓDIGO POSTAL (búsqueda estructurada, mucho
+ *    más precisa que el texto libre).
+ *  · Cualquier otro texto es una búsqueda libre («Col. Centro Torreón»).
+ *  · Siempre se limita al país de `mapa.pais` y se prefiere el entorno de `centro`
+ *    (la ciudad donde trabaja la iglesia), así «Centro» no devuelve otra ciudad.
+ *
+ * Nunca lanza: sin conexión o sin resultados devuelve una lista vacía y quien llama
+ * decide qué decirle a la persona. Los resultados son una SUGERENCIA: quien registra
+ * puede mover el punto después tocando el mapa.
+ */
+export async function buscarLugares(
+  texto: string,
+  opciones: {
+    pais: string
+    centro: Coordenadas
+    senal?: AbortSignal
+  },
+): Promise<LugarEncontrado[]> {
+  const consulta = texto.trim()
+  if (consulta.length < 3) return []
+
+  const margen = 0.6 // ≈ 65 km alrededor del centro: preferencia, no frontera
+  const parametros = new URLSearchParams({
+    format: 'jsonv2',
+    limit: '6',
+    addressdetails: '1',
+    countrycodes: opciones.pais,
+    'accept-language': 'es',
+    viewbox: [
+      opciones.centro.longitud - margen,
+      opciones.centro.latitud + margen,
+      opciones.centro.longitud + margen,
+      opciones.centro.latitud - margen,
+    ].join(','),
+    bounded: '0',
+  })
+  if (/^\d{5}$/.test(consulta)) parametros.set('postalcode', consulta)
+  else parametros.set('q', consulta)
+
+  try {
+    const respuesta = await fetch(`https://nominatim.openstreetmap.org/search?${parametros}`, {
+      signal: opciones.senal ?? AbortSignal.timeout(9000),
+      headers: { Accept: 'application/json' },
+    })
+    if (!respuesta.ok) return []
+
+    const datos = (await respuesta.json()) as Array<{
+      lat?: string
+      lon?: string
+      display_name?: string
+      address?: Record<string, unknown>
+    }>
+    if (!Array.isArray(datos)) return []
+
+    const vistos = new Set<string>()
+    const lugares: LugarEncontrado[] = []
+    for (const dato of datos) {
+      const latitud = Number(dato.lat)
+      const longitud = Number(dato.lon)
+      if (!Number.isFinite(latitud) || !Number.isFinite(longitud)) continue
+
+      const direccion = dato.address
+      const etiqueta =
+        direccion && typeof direccion === 'object'
+          ? componerDireccion({
+              calle: primero(direccion, ['road', 'pedestrian']),
+              colonia: primero(direccion, ['neighbourhood', 'suburb', 'quarter', 'city_district']),
+              ciudad: primero(direccion, ['city', 'town', 'village', 'municipality', 'county']),
+              estado: primero(direccion, ['state', 'region']),
+              cp: primero(direccion, ['postcode']),
+              pais: primero(direccion, ['country']),
+              direccion: null,
+            })
+          : null
+      const texto = etiqueta ?? (dato.display_name ?? '').split(', ').slice(0, 4).join(', ')
+      if (!texto || vistos.has(texto)) continue
+      vistos.add(texto)
+      lugares.push({
+        etiqueta: texto,
+        latitud: redondearCoordenada(latitud),
+        longitud: redondearCoordenada(longitud),
+      })
+    }
+    return lugares
+  } catch {
+    return []
+  }
+}
+
 /** Primer valor con contenido de una lista de claves del geocodificador. */
 function primero(direccion: Record<string, unknown>, claves: string[]): string | null {
   for (const clave of claves) {

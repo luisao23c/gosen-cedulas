@@ -1,8 +1,8 @@
 import { Box, Paper, Stack, Typography } from '@mui/material'
-import AccountTreeIcon from '@mui/icons-material/AccountTree'
 import CheckCircleOutlineOutlinedIcon from '@mui/icons-material/CheckCircleOutlineOutlined'
+import LogoGosen from '@/components/LogoGosen'
 import FormularioLogin from '@/features/auth/FormularioLogin'
-import { colores, degradados, radios, sombras } from '@/theme/theme'
+import { degradados, radios, sombras } from '@/theme/theme'
 
 export const metadata = { title: 'Entrar · Gosen' }
 
@@ -13,35 +13,14 @@ const ALCANCES = [
   'Pase de lista y cumpleaños próximos',
 ]
 
-/** Marca de la aplicación: insignia + nombre. Se usa en las dos columnas. */
+/** Marca de la aplicación: el logo y su lema. Se usa en las dos columnas. */
 function Marca({ sobreMarca = false }: { sobreMarca?: boolean }) {
   return (
-    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-      <Box
-        aria-hidden
-        sx={{
-          display: 'grid',
-          placeItems: 'center',
-          width: 44,
-          height: 44,
-          flexShrink: 0,
-          borderRadius: `${radios.grande}px`,
-          backgroundImage: sobreMarca ? undefined : degradados.marca,
-          bgcolor: sobreMarca ? colores.veloMarca : undefined,
-          color: 'primary.contrastText',
-          boxShadow: sobreMarca ? 'none' : sombras.reposo,
-        }}
-      >
-        <AccountTreeIcon />
-      </Box>
-      <Box>
-        <Typography variant="h5" component="p" sx={{ color: 'inherit', lineHeight: 1.1 }}>
-          Gosen
-        </Typography>
-        <Typography variant="caption" sx={{ color: 'inherit', opacity: 0.8 }}>
-          Células y ramas
-        </Typography>
-      </Box>
+    <Stack spacing={0.75}>
+      <LogoGosen alto={30} variante={sobreMarca ? 'claro' : 'oscuro'} />
+      <Typography variant="caption" sx={{ color: 'inherit', opacity: 0.8 }}>
+        Células y ramas
+      </Typography>
     </Stack>
   )
 }

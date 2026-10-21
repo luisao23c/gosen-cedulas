@@ -22,23 +22,97 @@ import { createTheme, type Shadows } from '@mui/material/styles'
    partir de aquí, así que no hay que tocarlos a mano.
    ───────────────────────────────────────────────────────────── */
 
+/**
+ * ① ELIGE UNA PALETA Y UNA TIPOGRAFÍA — es lo único que hace falta tocar.
+ *
+ * Cada paleta son tres colores; todo lo demás (tonos oscuros y claros, bordes,
+ * sombras, degradados) se calcula solo. Para inventar una nueva, copia una
+ * línea de `PALETAS` o `TIPOGRAFIAS` y cámbiale los valores.
+ */
+export const PALETAS = {
+  /** Verde bosque con acento ámbar (la original) */
+  bosque: { principal: '#16563A', acento: '#E8A33D', fondo: '#F5F7F4' },
+  /** Azul profundo con acento naranja: sobria y confiable */
+  oceano: { principal: '#0B5CAD', acento: '#F2A33A', fondo: '#F4F7FB' },
+  /** Vino con acento dorado: cálida y elegante */
+  vino: { principal: '#7A1F3D', acento: '#D9A441', fondo: '#FAF6F5' },
+  /** Violeta con acento ámbar: moderna y juvenil */
+  violeta: { principal: '#5B3FA6', acento: '#F2B134', fondo: '#F7F5FB' },
+  /** Grafito con acento coral: neutra, deja respirar el contenido */
+  grafito: { principal: '#2B3A4A', acento: '#E4572E', fondo: '#F4F5F7' },
+  /** Terracota con acento turquesa: cercana y alegre */
+  terracota: { principal: '#B8461B', acento: '#0F8B8D', fondo: '#FBF6F2' },
+  /**
+   * Manual de identidad: Luz Serna #E8E7DF (fondo), Semilla #B3B4A5 (acento),
+   * Raíz Profunda #3C3B37 y Tierra Viva #232323 (textos), Cherry Mahogany
+   * #65362F (color de marca).
+   */
+  marca: {
+    principal: '#65362F',
+    acento: '#B3B4A5',
+    fondo: '#E8E7DF',
+    texto: '#232323',
+    textoSuave: '#3C3B37',
+  },
+} as const
+
+/**
+ * Tipografías disponibles. Las que llevan `var(--fuente-…)` se cargan en
+ * `app/layout.tsx` (Google Fonts, autoalojadas); si falta una, cae a la del
+ * sistema, así que nunca se rompe la pantalla.
+ */
+const SISTEMA = "system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+export const TIPOGRAFIAS = {
+  /** Inter: neutra y muy legible en pantallas pequeñas */
+  moderna: { titulos: `var(--fuente-inter), ${SISTEMA}`, texto: `var(--fuente-inter), ${SISTEMA}` },
+  /** Poppins en títulos, Nunito en texto: redonda y amable */
+  amigable: { titulos: `var(--fuente-poppins), ${SISTEMA}`, texto: `var(--fuente-nunito), ${SISTEMA}` },
+  /** Lora en títulos, Inter en texto: editorial y con carácter */
+  editorial: { titulos: `var(--fuente-lora), Georgia, serif`, texto: `var(--fuente-inter), ${SISTEMA}` },
+  /** Manual de identidad: Minion Pro en títulos, Creato Display en texto e interfaz */
+  marca: { titulos: `var(--fuente-minion), Georgia, serif`, texto: `var(--fuente-creato), ${SISTEMA}` },
+  /** Solo las fuentes del dispositivo: no descarga nada */
+  sistema: { titulos: SISTEMA, texto: SISTEMA },
+} as const
+
+export const apariencia: {
+  paleta: keyof typeof PALETAS
+  tipografia: keyof typeof TIPOGRAFIAS
+  /** Todo el texto crece o se encoge junto: 1 = normal, 1.1 = 10 % más grande */
+  escalaTexto: number
+  /** Redondez de la interfaz: 1 = normal, 0 = esquinas rectas, 1.5 = muy redondeado */
+  escalaRadios: number
+} = {
+  paleta: 'marca',
+  tipografia: 'marca',
+  escalaTexto: 1,
+  escalaRadios: 1,
+}
+
+/**
+ * ② Ajuste fino (opcional): estos valores salen de la paleta y la tipografía
+ * elegidas arriba. Solo edítalos si quieres un color o fuente propios.
+ */
 export const ajustes = {
   /** Color de marca: barra superior, botones, enlaces, estados activos */
-  colorPrincipal: '#16563A',
+  colorPrincipal: PALETAS[apariencia.paleta].principal as string,
   /** Color de acento: insignias y chips, debe contrastar con el principal */
-  colorAcento: '#E8A33D',
+  colorAcento: PALETAS[apariencia.paleta].acento as string,
   /** Fondo general de la aplicación (las tarjetas siguen blancas) */
-  colorFondo: '#F5F7F4',
+  colorFondo: PALETAS[apariencia.paleta].fondo as string,
+  /** Texto principal y secundario; si la paleta no los trae, se derivan del color de marca */
+  colorTexto: ('texto' in PALETAS[apariencia.paleta]
+    ? (PALETAS[apariencia.paleta] as { texto: string }).texto
+    : null) as string | null,
+  colorTextoSuave: ('textoSuave' in PALETAS[apariencia.paleta]
+    ? (PALETAS[apariencia.paleta] as { textoSuave: string }).textoSuave
+    : null) as string | null,
   /** Fuente de títulos y encabezados */
-  fuenteTitulos:
-    "'Segoe UI Variable Display', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif",
+  fuenteTitulos: TIPOGRAFIAS[apariencia.tipografia].titulos as string,
   /** Fuente del texto corrido y de la interfaz */
-  fuenteTexto:
-    "'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif",
-  /** Todo el texto crece o se encoge junto: 1 = normal, 1.1 = 10 % más grande */
-  escalaTexto: 1,
-  /** Redondez de la interfaz: 1 = normal, 0 = esquinas rectas, 1.5 = muy redondeado */
-  escalaRadios: 1,
+  fuenteTexto: TIPOGRAFIAS[apariencia.tipografia].texto as string,
+  escalaTexto: apariencia.escalaTexto,
+  escalaRadios: apariencia.escalaRadios,
 }
 
 /* ── Ayudas de color ──────────────────────────────────────────
@@ -134,9 +208,13 @@ export const colores = {
   /** Superficie apenas teñida: barras, cabeceras de tabla, menú lateral */
   superficieAlt: mezclar(ajustes.colorPrincipal, aclarar(ajustes.colorFondo, 1), 0.97),
   /** Color del texto principal */
-  texto: oscurecer(ajustes.colorPrincipal, 0.82),
+  texto: ajustes.colorTexto ?? oscurecer(ajustes.colorPrincipal, 0.82),
   /** Texto secundario: descripciones, etiquetas de apoyo */
-  textoSuave: mezclar(oscurecer(ajustes.colorPrincipal, 0.82), aclarar(ajustes.colorFondo, 1), 0.42),
+  textoSuave: mezclar(
+    ajustes.colorTextoSuave ?? ajustes.colorTexto ?? oscurecer(ajustes.colorPrincipal, 0.82),
+    aclarar(ajustes.colorFondo, 1),
+    0.3,
+  ),
   /** Texto sobre fondos de color */
   textoInvertido: aclarar(ajustes.colorFondo, 1),
   /** Estados de la interfaz: no cambian con la marca, significan lo mismo siempre */
@@ -263,6 +341,8 @@ export const medidas = {
 export const mapa = {
   /** Centro inicial cuando todavía no hay un punto marcado (Torreón, Coahuila) */
   centro: { latitud: 25.5439, longitud: -103.4069 },
+  /** País en el que se buscan códigos postales y direcciones (código de 2 letras, ISO 3166) */
+  pais: 'mx',
   /** Acercamiento inicial (vista de ciudad) */
   zoom: 12,
   /** Acercamiento al mostrar un punto concreto (vista de calle) */
@@ -336,6 +416,11 @@ export const tema = createTheme({
     MuiCssBaseline: {
       styleOverrides: (base) => ({
         html: { WebkitTextSizeAdjust: '100%' },
+        // Entrada de cada pantalla: fundido corto con un leve ascenso
+        '@keyframes entradaPagina': {
+          from: { opacity: 0, transform: 'translateY(6px)' },
+          to: { opacity: 1, transform: 'none' },
+        },
         body: {
           backgroundColor: base.palette.background.default,
           color: base.palette.text.primary,

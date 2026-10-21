@@ -1,16 +1,19 @@
 import { notFound } from 'next/navigation'
-import { Box, Chip, Paper, Stack, Typography } from '@mui/material'
+import { Box, Chip, LinearProgress, Paper, Stack, Typography } from '@mui/material'
 import EventIcon from '@mui/icons-material/Event'
 import PlaceIcon from '@mui/icons-material/Place'
 import { exigirRol } from '@/lib/auth/guardas'
-import { puede } from '@/lib/auth/permisos'
+import { puede, rolPuede } from '@/lib/auth/permisos'
 import { buscarEvento, listarAsignables, listarTurnos } from '@/lib/db/eventos'
+import { listarPrestamos } from '@/lib/db/prestamos'
+import { chipDeFase, fasePrestamo } from '@/lib/prestamo'
 import { formatearFechaConDia, formatearFecha } from '@/lib/fechas'
 import { distanciaKm, distanciaLegible } from '@/lib/geo'
 import { etiquetaLlegada, horaDeInstante, tonoDeLlegada } from '@/lib/servicio'
 import { inicialesDe } from '@/lib/nombres'
 import AccionConfirmar from '@/components/AccionConfirmar'
 import AccionLlegada from '@/components/AccionLlegada'
+import AccionFuncion from '@/components/AccionFuncion'
 import AccionQuitarServidor from '@/components/AccionQuitarServidor'
 import AsignarServidores from '@/components/AsignarServidores'
 import EncabezadoPagina from '@/components/EncabezadoPagina'
@@ -46,9 +49,13 @@ export default async function PaginaEvento({
   // Fuera del alcance no se distingue de «no existe»: ni pistas de lo ajeno.
   if (!evento) notFound()
 
-  const [turnos, cuentas] = await Promise.all([
+  const [turnos, cuentas, prestamos] = await Promise.all([
     listarTurnos(evento.id),
     listarAsignables(evento.ministerioId),
+    // Solo quien puede ver préstamos ve el equipo que salió para el evento
+    rolPuede(usuario, 'ver', 'prestamo')
+      ? listarPrestamos(usuario, { soloAbiertos: false, eventoId: evento.id })
+      : Promise.resolve([]),
   ])
 
   const ambito = { ministerioId: evento.ministerioId }
@@ -83,6 +90,11 @@ export default async function PaginaEvento({
           etiqueta: 'Servidor',
           texto: turno.nombreUsuario ?? `Cuenta #${turno.usuarioId}`,
           destacado: true,
+        },
+        {
+          clave: 'funcion',
+          etiqueta: 'Rol',
+          texto: turno.funcion ?? 'Sin rol',
         },
         {
           clave: 'confirmado',
@@ -144,6 +156,14 @@ export default async function PaginaEvento({
               eventoId={evento.id}
               usuarioId={esMiTurno ? undefined : turno.usuarioId}
               confirmado={turno.confirmado}
+            />
+          ) : null}
+          {puedeAsignar ? (
+            <AccionFuncion
+              eventoId={evento.id}
+              usuarioId={turno.usuarioId}
+              nombre={turno.nombreUsuario ?? 'esta persona'}
+              funcion={turno.funcion}
             />
           ) : null}
           {puedoPasarLista ? (
@@ -209,6 +229,63 @@ export default async function PaginaEvento({
             )}
           </Stack>
 
+          {turnos.length > 0 ? (
+            <Stack spacing={1.5}>
+              {[
+                { etiqueta: 'Confirmaron', cuantos: turnos.filter((turno) => turno.confirmado).length },
+                { etiqueta: 'Ya llegaron', cuantos: turnos.filter((turno) => turno.llegoEn).length },
+              ].map(({ etiqueta, cuantos }) => (
+                <Box key={etiqueta}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {etiqueta}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {cuantos} de {turnos.length}
+                    </Typography>
+                  </Box>
+                  <LinearProgress
+                    variant="determinate"
+                    value={(cuantos / turnos.length) * 100}
+                    aria-label={`${etiqueta}: ${cuantos} de ${turnos.length}`}
+                    color={cuantos === turnos.length ? 'success' : 'primary'}
+                  />
+                </Box>
+              ))}
+              {turnos.some((turno) => turno.llegoEn) ? (
+                <Typography variant="caption" color="text.secondary">
+                  Último registro:{' '}
+                  {horaDeInstante(
+                    turnos
+                      .map((turno) => turno.llegoEn)
+                      .filter((valor): valor is string => Boolean(valor))
+                      .sort()
+                      .at(-1) ?? null,
+                  ) ?? '—'}
+                </Typography>
+              ) : null}
+            </Stack>
+          ) : null}
+        </Stack>
+      </Paper>
+
+      <ListadoResponsivo
+        filas={filas}
+        etiquetas={['Servidor', 'Rol', 'Confirmó', 'Llegada', 'Del punto', 'Registró']}
+        placeholderBuscador="Buscar servidor…"
+        accionesCabecera={puedeChecar || puedeEditar}
+        mensajeVacio={
+          puedeAsignar
+            ? 'Todavía no hay nadie asignado. Usa «Asignar servidores» para armar la lista de quién sirve en este evento.'
+            : 'Este evento no tiene servidores asignados.'
+        }
+      />
+
+      {/* El mapa va DESPUÉS de la lista: en el teléfono, lo que se atiende (quién confirmó
+          y quién llegó) no debe quedar enterrado bajo un mapa de pantalla completa. */}
+      <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 } }}>
+        <Stack spacing={1.5}>
+          <Typography variant="subtitle1">Punto de reunión</Typography>
           {punto.latitud != null && punto.longitud != null ? (
             <MapaUbicacion
               latitud={punto.latitud}
@@ -222,44 +299,36 @@ export default async function PaginaEvento({
               que estar; con ese punto se mide dónde checa su llegada cada servidor.
             </Typography>
           )}
-
-          <Stack direction="row" spacing={2} useFlexGap sx={{ flexWrap: 'wrap' }}>
-            <Typography variant="body2" color="text.secondary">
-              {turnos.length} {turnos.length === 1 ? 'servidor asignado' : 'servidores asignados'}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {turnos.filter((turno) => turno.confirmado).length} confirmaron
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {turnos.filter((turno) => turno.llegoEn).length} ya llegaron
-            </Typography>
-            {turnos.some((turno) => turno.llegoEn) ? (
-              <Typography variant="body2" color="text.secondary">
-                Último registro:{' '}
-                {horaDeInstante(
-                  turnos
-                    .map((turno) => turno.llegoEn)
-                    .filter((valor): valor is string => Boolean(valor))
-                    .sort()
-                    .at(-1) ?? null,
-                ) ?? '—'}
-              </Typography>
-            ) : null}
-          </Stack>
         </Stack>
       </Paper>
 
-      <ListadoResponsivo
-        filas={filas}
-        etiquetas={['Servidor', 'Confirmó', 'Llegada', 'Del punto', 'Registró']}
-        placeholderBuscador="Buscar servidor…"
-        accionesCabecera={puedeChecar || puedeEditar}
-        mensajeVacio={
-          puedeAsignar
-            ? 'Todavía no hay nadie asignado. Usa «Asignar servidores» para armar la lista de quién sirve en este evento.'
-            : 'Este evento no tiene servidores asignados.'
-        }
-      />
+      {prestamos.length > 0 ? (
+        <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 } }}>
+          <Stack spacing={1.5}>
+            <Typography variant="subtitle1">Equipo que salió para este evento</Typography>
+            {prestamos.map((prestamo) => {
+              const chip = chipDeFase(fasePrestamo(prestamo), prestamo.estadoDevolucion)
+              return (
+                <Stack
+                  key={prestamo.id}
+                  direction="row"
+                  spacing={1}
+                  useFlexGap
+                  sx={{ alignItems: 'center', flexWrap: 'wrap' }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {prestamo.nombreEquipo ?? `Equipo #${prestamo.equipoId}`}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    lo lleva {prestamo.nombreAsignado ?? prestamo.nombreResponsable ?? '—'}
+                  </Typography>
+                  <Chip size="small" color={chip.tono} label={chip.etiqueta} />
+                </Stack>
+              )
+            })}
+          </Stack>
+        </Paper>
+      ) : null}
 
       <Box>
         <Typography variant="caption" color="text.secondary">

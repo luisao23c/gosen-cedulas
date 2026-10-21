@@ -52,6 +52,11 @@ Sin ese paso, `npm`/`node` no se encuentran.
 - 🚫 Nada de hex, `rgb()`, `hsl()` fuera de ese archivo.
 - 🚫 Nada de `fontFamily` o `fontSize` en componentes: usar variantes de `theme.typography`
   y tokens del tema (`color: 'primary.main'`, `spacing()`, `theme.shape.borderRadius`).
+- **Cambiar la apariencia = editar `apariencia` en `src/theme/theme.ts`**: `paleta` (marca, bosque, oceano,
+  vino, violeta, grafito, terracota), `tipografia` (marca, moderna, amigable, editorial, sistema),
+  por defecto la **marca** (Manual de Identidad: Minion Pro + Creato Display, archivos en `src/fonts/`), `escalaTexto` y
+  `escalaRadios`. Una paleta nueva es una línea más en `PALETAS`; una tipografía nueva, una en `TIPOGRAFIAS`
+  (y su carga en `app/layout.tsx` si es de Google Fonts).
 - Si necesitas un token nuevo (un color de éxito, un espaciado), **agrégalo al tema** y úsalo por referencia.
 - Tan importante como el color: **radios** (`radios.*`), **sombras** (`sombras.*`), **duraciones y curvas**
   (`movimiento.*`) y **degradados** (`degradados.*`). Nada de `boxShadow: '0 2px 8px …'`, `transition: '220ms …'`
@@ -108,7 +113,8 @@ Sin ese paso, `npm`/`node` no se encuentran.
 - Cabecera de pantalla con `EncabezadoPagina` (en móvil el título ya está en la barra superior).
 - Medidas táctiles y de barras en `medidas` de `src/theme/theme.ts`; nada de `84px` sueltos.
 - Los diálogos envían con `onSubmit` (no `action`) para que un error no borre lo escrito.
-- **Un solo FAB por pantalla**: `AccionPrincipal` lo fija abajo a la derecha, así que dos acciones
+- **Sin botón flotante sobre las listas**: `AccionPrincipal` es un botón en el flujo de la página (a todo el ancho en móvil) porque el FAB tapaba las últimas filas. La regla antigua de "un solo FAB" queda como historial;
+  antes decía: **Un solo FAB por pantalla**: `AccionPrincipal` lo fija abajo a la derecha, así que dos acciones
   flotantes se enciman en el mismo punto y la de abajo queda inalcanzable al tacto. La segunda acción
   va como botón normal de tamaño táctil dentro de su tarjeta (así lo hace `PaseDeLista`).
 - El corte es `md` del tema (MUI por defecto: 900 px) y sale siempre de `theme.breakpoints`:
@@ -210,6 +216,7 @@ scripts/crear-esquema.mjs # npm run db:setup (esquema + datos de prueba)
 | `npm run db:migrar-ubicaciones` | Añade las columnas de ubicación, retira el domicilio y el correo del integrante y el `lugar` de la célula (idempotente) |
 | `npm run db:migrar-asistencia` | Crea las tablas `reunion` y `asistencia` (pase de lista) en una base existente |
 | `npm run db:migrar-celulas` | Renombra la tabla antigua `cedula` a `celula` (idempotente) |
+| `npm run iconos` | Regenera los íconos de la PWA y el logo claro desde `public/marca/gosen-logo.png` |
 | `npm run db:migrar-ministerio` | Crea `ministerio`, `equipo`, `prestamo`, `evento` y `servidor_evento` (idempotente) |
 
 Node no está en el PATH del sistema: abrir la terminal con

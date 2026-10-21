@@ -2,6 +2,7 @@ import type {
   CampoDiferenciador,
   CriterioCelula,
   EvaluacionCelula,
+  PuntajeCandidata,
   RespuestaCampo,
 } from '@/types/domain'
 
@@ -80,6 +81,7 @@ export function evaluarCandidata(
   const preferencias = { cumplidos: 0, total: 0 }
   const cumplidos: string[] = []
   const faltantes: string[] = []
+  const faltantesObligatorios: string[] = []
   let apta = true
 
   for (const criterio of criterios) {
@@ -112,7 +114,9 @@ export function evaluarCandidata(
       if (esObligatorio) apta = false
       const queBusca =
         campo.tipo === 'SELECT' ? queAcepta(campo, criterio) : etiquetaDeRango(campo, criterio)
-      faltantes.push(`${campo.nombre} (${queBusca})`)
+      const motivo = `${campo.nombre} (${queBusca})`
+      faltantes.push(motivo)
+      if (esObligatorio) faltantesObligatorios.push(motivo)
     }
   }
 
@@ -123,6 +127,7 @@ export function evaluarCandidata(
     preferencias,
     cumplidos,
     faltantes,
+    faltantesObligatorios,
   }
 }
 
@@ -141,16 +146,59 @@ export function resumenDeEvaluacion(evaluacion: EvaluacionCelula | undefined): s
   return piezas.length > 0 ? piezas.join(' · ') : null
 }
 
+/** Peso de cada parte en el puntaje: criterios 70 %, cercanía 30 %. */
+const PESO_CRITERIOS = 0.7
+const PESO_CERCANIA = 0.3
+/** A esta distancia (km) la cercanía vale 0: más lejos que esto ya no suma. */
+const KM_SIN_CERCANIA = 15
+
 /**
- * Orden de recomendación: primero las aptas, después las que más preferencias
- * cumplen; la distancia la rompe a empate (la pasa quien llama).
+ * Puntaje de 0 a 100 con el que se ordena el ranking del Lobby.
+ *
+ *  · Criterios: lo cumplido sobre lo declarado; los obligatorios pesan el doble
+ *    que las preferencias. Si la persona no ha contestado nada, o la célula no
+ *    declaró criterios, esa parte queda neutra (0.5): no premia ni castiga.
+ *  · Cercanía: baja en línea recta de 1 (misma esquina) a 0 (a 15 km o más).
+ *    Sin punto en el mapa no se mide y todo el puntaje sale de los criterios.
+ *
+ * Así una célula que cumple más y queda más cerca sube; una que cumple todo pero
+ * está al otro lado de la ciudad puede quedar debajo de una algo menos exacta pero
+ * muy cercana. Las que fallan un obligatorio se ordenan aparte (ver ordenarCandidatas).
  */
-export function ordenarPorEvaluacion(
-  a: EvaluacionCelula | undefined,
-  b: EvaluacionCelula | undefined,
+export function puntuarCandidata(
+  evaluacion: EvaluacionCelula | undefined,
+  distanciaKm: number | null,
+  hayRespuestas: boolean,
+): PuntajeCandidata {
+  let porCriterios = 0.5
+  if (evaluacion && hayRespuestas) {
+    const total = evaluacion.obligatorios.total * 2 + evaluacion.preferencias.total
+    const logrado = evaluacion.obligatorios.cumplidos * 2 + evaluacion.preferencias.cumplidos
+    porCriterios = total > 0 ? logrado / total : 0.5
+  }
+  const porCercania =
+    distanciaKm == null ? null : Math.max(0, 1 - distanciaKm / KM_SIN_CERCANIA)
+  const mezcla =
+    porCercania == null
+      ? porCriterios
+      : porCriterios * PESO_CRITERIOS + porCercania * PESO_CERCANIA
+  return { puntaje: Math.round(mezcla * 100), porCriterios, porCercania }
+}
+
+/**
+ * Orden del ranking: primero las que cumplen todo lo obligatorio, y dentro de cada
+ * grupo la de mayor puntaje; a igualdad, la más cercana.
+ */
+export function compararCandidatas(
+  a: { evaluacion?: EvaluacionCelula; puntaje: PuntajeCandidata; distancia: number | null },
+  b: { evaluacion?: EvaluacionCelula; puntaje: PuntajeCandidata; distancia: number | null },
+  hayRespuestas: boolean,
 ): number {
-  const aptaA = a?.apta ? 1 : 0
-  const aptaB = b?.apta ? 1 : 0
-  if (aptaA !== aptaB) return aptaB - aptaA
-  return (b?.preferencias.cumplidos ?? 0) - (a?.preferencias.cumplidos ?? 0)
+  if (hayRespuestas) {
+    const aptaA = a.evaluacion ? (a.evaluacion.apta ? 1 : 0) : 1
+    const aptaB = b.evaluacion ? (b.evaluacion.apta ? 1 : 0) : 1
+    if (aptaA !== aptaB) return aptaB - aptaA
+  }
+  if (a.puntaje.puntaje !== b.puntaje.puntaje) return b.puntaje.puntaje - a.puntaje.puntaje
+  return (a.distancia ?? Number.POSITIVE_INFINITY) - (b.distancia ?? Number.POSITIVE_INFINITY)
 }

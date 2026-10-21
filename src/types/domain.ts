@@ -241,8 +241,16 @@ export interface Prestamo {
   responsableId: number
   /** A quién se le asignó el equipo; puede ser la misma persona */
   asignadoAId: number | null
+  /** Evento para el que sale el equipo (opcional) */
+  eventoId: number | null
   /** Cuándo salió y cuándo volvió (ISO con hora) */
   prestadoEn: string
+  /** Cuándo confirmó quien lo lleva que ya lo recogió (null = todavía por recoger) */
+  recogidoEn: string | null
+  /** Cuándo avisó quien lo trae que ya lo devolvió (falta que el ministerio lo reciba) */
+  devolucionAvisadaEn: string | null
+  /** Cómo dice quien lo trae que lo devuelve */
+  estadoDevolucionAvisado: ConservacionEquipo | null
   devueltoEn: string | null
   /** Cómo salió y cómo volvió */
   estadoEntrega: ConservacionEquipo
@@ -255,6 +263,7 @@ export interface Prestamo {
   nombreResponsable?: string | null
   nombreAsignado?: string | null
   nombreMinisterio?: string | null
+  nombreEvento?: string | null
 }
 
 /** Evento en el que sirve el ministerio (culto, campaña, boda…). */
@@ -284,6 +293,8 @@ export interface TurnoEvento {
   id: number
   eventoId: number
   usuarioId: number
+  /** Rol que cumple en este evento («Cámara 1», «Switcher»); null = sin definir */
+  funcion: string | null
   confirmado: boolean
   confirmadoEn: string | null
   /** A qué hora llegó (ISO con hora) */
@@ -363,6 +374,18 @@ export interface EvaluacionCelula {
   /** Etiquetas de lo que cumple y de lo que le falta (el motivo de la recomendación) */
   cumplidos: string[]
   faltantes: string[]
+  /** De los que faltan, los que son OBLIGATORIOS (son los que la descartan) */
+  faltantesObligatorios: string[]
+}
+
+/** Puntaje de recomendación de una célula para una persona (ver `puntuarCandidata`). */
+export interface PuntajeCandidata {
+  /** 0–100: qué tan bien le queda la célula (criterios + cercanía) */
+  puntaje: number
+  /** 0–1: fracción de criterios cumplidos (las obligatorias pesan el doble) */
+  porCriterios: number
+  /** 0–1: qué tan cerca está (1 = a la vuelta, 0 = muy lejos); null si no hay punto */
+  porCercania: number | null
 }
 
 /** Días de la semana en español indexados igual que `diaSemana`. */

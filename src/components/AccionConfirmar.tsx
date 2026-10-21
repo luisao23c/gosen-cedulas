@@ -66,7 +66,7 @@ export default function AccionConfirmar({
       : 'Confirmar que va'
 
   return (
-    <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
+    <Stack spacing={1} sx={{ alignItems: comoBoton ? 'stretch' : 'flex-start' }}>
       {comoBoton ? (
         <Button
           variant={confirmado ? 'outlined' : 'contained'}

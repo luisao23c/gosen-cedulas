@@ -8,6 +8,10 @@ import {
   Chip,
   CircularProgress,
   IconButton,
+  InputAdornment,
+  List,
+  ListItemButton,
+  ListItemText,
   Stack,
   TextField,
   Tooltip,
@@ -15,12 +19,16 @@ import {
 } from '@mui/material'
 import MyLocationIcon from '@mui/icons-material/MyLocation'
 import CloseIcon from '@mui/icons-material/Close'
+import SearchIcon from '@mui/icons-material/Search'
 import MapaUbicacion from '@/components/MapaUbicacion'
+import { mapa } from '@/theme/theme'
 import {
+  buscarLugares,
   formatearCoordenadas,
   redondearCoordenada,
   resolverDireccion,
   type DireccionResuelta,
+  type LugarEncontrado,
 } from '@/lib/geo'
 
 /** Punto marcado más la dirección que se obtuvo al marcarlo. */
@@ -65,6 +73,11 @@ export default function CampoUbicacion({
   const [estado, setEstado] = React.useState<Estado>(inicio?.direccion ? 'listo' : 'inactivo')
   const [buscandoPosicion, setBuscandoPosicion] = React.useState(false)
   const [aviso, setAviso] = React.useState<string | null>(null)
+  // Búsqueda por código postal, colonia o dirección
+  const [consulta, setConsulta] = React.useState('')
+  const [buscandoLugar, setBuscandoLugar] = React.useState(false)
+  const [resultados, setResultados] = React.useState<LugarEncontrado[] | null>(null)
+  const busquedaRef = React.useRef<AbortController | null>(null)
 
   const peticionRef = React.useRef<AbortController | null>(null)
   const alCambiarRef = React.useRef(alCambiar)
@@ -74,7 +87,13 @@ export default function CampoUbicacion({
     alCambiarRef.current = alCambiar
   }, [alCambiar])
 
-  React.useEffect(() => () => peticionRef.current?.abort(), [])
+  React.useEffect(
+    () => () => {
+      peticionRef.current?.abort()
+      busquedaRef.current?.abort()
+    },
+    [],
+  )
 
   React.useEffect(() => {
     alCambiarRef.current?.({
@@ -114,6 +133,53 @@ export default function CampoUbicacion({
     setDetalles(null)
     setEstado('inactivo')
     setAviso(null)
+    setConsulta('')
+    setResultados(null)
+  }
+
+  /**
+   * Busca por código postal, colonia o dirección y propone lugares. Con un solo
+   * resultado (lo normal con un código postal) lo marca directo; con varios, deja
+   * elegir. Después se puede afinar tocando el mapa.
+   */
+  const buscar = async () => {
+    const texto = consulta.trim()
+    if (texto.length < 3) {
+      setAviso('Escribe al menos 3 caracteres: un código postal, una colonia o una calle.')
+      return
+    }
+    busquedaRef.current?.abort()
+    const control = new AbortController()
+    busquedaRef.current = control
+
+    setAviso(null)
+    setResultados(null)
+    setBuscandoLugar(true)
+    const encontrados = await buscarLugares(texto, {
+      pais: mapa.pais,
+      centro: mapa.centro,
+      senal: control.signal,
+    })
+    if (control.signal.aborted) return
+    setBuscandoLugar(false)
+
+    if (encontrados.length === 0) {
+      setAviso(
+        'No encontramos ese lugar. Revisa el código postal o prueba con la colonia y la ciudad; también puedes marcar el punto en el mapa.',
+      )
+      return
+    }
+    if (encontrados.length === 1) {
+      elegirLugar(encontrados[0])
+      return
+    }
+    setResultados(encontrados)
+  }
+
+  const elegirLugar = (lugar: LugarEncontrado) => {
+    setResultados(null)
+    setConsulta(lugar.etiqueta)
+    marcar(lugar.latitud, lugar.longitud)
   }
 
   const usarMiUbicacion = () => {
@@ -168,6 +234,59 @@ export default function CampoUbicacion({
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
         {ayuda}
       </Typography>
+
+      {/* Buscar por código postal: llega al lugar sin tener que mover el mapa a mano */}
+      <TextField
+        fullWidth
+        value={consulta}
+        onChange={(evento) => setConsulta(evento.target.value)}
+        onKeyDown={(evento) => {
+          // Enter busca; no debe enviar el formulario que contiene este campo
+          if (evento.key === 'Enter') {
+            evento.preventDefault()
+            void buscar()
+          }
+        }}
+        label="Buscar por código postal o dirección"
+        placeholder="Ej.: 27000 o Col. Centro, Torreón"
+        slotProps={{
+          htmlInput: { inputMode: 'search', enterKeyHint: 'search', 'aria-label': 'Buscar lugar en el mapa' },
+          input: {
+            endAdornment: (
+              <InputAdornment position="end">
+                <Tooltip title="Buscar">
+                  <span>
+                    <IconButton
+                      onClick={() => void buscar()}
+                      disabled={buscandoLugar}
+                      aria-label="Buscar lugar"
+                      edge="end"
+                    >
+                      {buscandoLugar ? <CircularProgress size={18} /> : <SearchIcon />}
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              </InputAdornment>
+            ),
+          },
+        }}
+        sx={{ mb: 1.5 }}
+      />
+
+      {resultados ? (
+        <Box sx={{ mb: 1.5, border: 1, borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', px: 1.5, pt: 1 }}>
+            Elige el lugar (después puedes afinar el punto tocando el mapa):
+          </Typography>
+          <List dense disablePadding>
+            {resultados.map((lugar) => (
+              <ListItemButton key={`${lugar.latitud},${lugar.longitud}`} onClick={() => elegirLugar(lugar)}>
+                <ListItemText primary={lugar.etiqueta} />
+              </ListItemButton>
+            ))}
+          </List>
+        </Box>
+      ) : null}
 
       <MapaUbicacion
         latitud={punto?.latitud ?? null}

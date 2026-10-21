@@ -1,5 +1,6 @@
 import { Stack } from '@mui/material'
 import EventIcon from '@mui/icons-material/Event'
+import { tieneEquipoACargo } from '@/lib/db/prestamos'
 import { exigirRol } from '@/lib/auth/guardas'
 import { puede, rolPuede } from '@/lib/auth/permisos'
 import { listarEventos, listarMisTurnos } from '@/lib/db/eventos'
@@ -9,7 +10,8 @@ import AccionBaja from '@/components/AccionBaja'
 import EncabezadoPagina from '@/components/EncabezadoPagina'
 import FormularioEvento from '@/components/FormularioEvento'
 import NavegacionMinisterio from '@/components/NavegacionMinisterio'
-import { seccionesVisibles } from '@/lib/ministerio'
+import FiltroMinisterio from '@/components/FiltroMinisterio'
+import { leerFiltroMinisterio, seccionesVisibles } from '@/lib/ministerio'
 import ListadoResponsivo, { type FilaListado } from '@/components/ListadoResponsivo'
 import { borrarEvento } from '@/features/ministerio/eventos'
 
@@ -22,12 +24,18 @@ export const metadata = { title: 'Eventos · Gosen' }
  * Los próximos van primero (agrupados) porque son los que se atienden; los
  * pasados quedan para consultar quién llegó y a qué hora.
  */
-export default async function PaginaEventos() {
+export default async function PaginaEventos({
+  searchParams,
+}: {
+  searchParams: Promise<{ ministerio?: string }>
+}) {
   const usuario = await exigirRol('ver', 'evento')
+  const tieneEquipo = await tieneEquipoACargo(usuario.id)
+  const filtroMinisterio = leerFiltroMinisterio((await searchParams).ministerio)
   const hoy = hoyISO()
 
   const [eventos, ministerios, misTurnos] = await Promise.all([
-    listarEventos(usuario, { soloActivos: false }),
+    listarEventos(usuario, { soloActivos: false, ministerioId: filtroMinisterio ?? undefined }),
     listarMinisterios(usuario),
     listarMisTurnos(usuario.id, { desde: hoy }),
   ])
@@ -35,6 +43,8 @@ export default async function PaginaEventos() {
   const ministeriosPermitidos = ministerios.filter((ministerio) =>
     puede(usuario, 'crear', 'evento', { ministerioId: ministerio.id }),
   )
+
+  const variosMinisterios = ministerios.length > 1
 
   const filas: FilaListado[] = eventos.map((evento) => {
     const proximo = evento.fecha >= hoy
@@ -51,6 +61,9 @@ export default async function PaginaEventos() {
       celdas: [
         { clave: 'nombre', etiqueta: 'Evento', texto: evento.nombre, destacado: true },
         { clave: 'fecha', etiqueta: 'Fecha', texto: formatearFechaConDia(evento.fecha) },
+        ...(variosMinisterios
+          ? [{ clave: 'ministerio', etiqueta: 'Ministerio', texto: evento.nombreMinisterio ?? '—' }]
+          : []),
         {
           clave: 'hora',
           etiqueta: 'Deben estar',
@@ -63,22 +76,22 @@ export default async function PaginaEventos() {
           texto: evento.ubicacion.direccion ?? 'Sin ubicación marcada',
         },
         {
+          // El chip es lo único que se ve del estado en la lista del teléfono:
+          // dice cuántos faltan por confirmar sin abrir el evento.
           clave: 'servidores',
-          etiqueta: 'Sirven',
+          etiqueta: 'Confirmaciones',
           texto:
             evento.totalServidores === 0
               ? 'Sin asignar'
-              : `${evento.totalServidores} · ${evento.confirmados} confirmaron · ${evento.llegaron} llegaron`,
-          conEtiqueta: true,
-        },
-        {
-          clave: 'estado',
-          etiqueta: 'Estado',
-          texto: evento.activo ? 'Activo' : 'Cancelado',
-          chip: {
-            etiqueta: evento.activo ? 'Activo' : 'Cancelado',
-            tono: evento.activo ? 'success' : 'default',
-          },
+              : `${evento.confirmados} de ${evento.totalServidores} confirmaron`,
+          chip: !evento.activo
+            ? { etiqueta: 'Cancelado', tono: 'default' }
+            : evento.totalServidores === 0
+              ? { etiqueta: 'Sin servidores', tono: 'warning' }
+              : {
+                  etiqueta: `${evento.confirmados} de ${evento.totalServidores} confirmaron`,
+                  tono: evento.confirmados === evento.totalServidores ? 'success' : 'primary',
+                },
         },
       ],
       acciones: (
@@ -124,14 +137,26 @@ export default async function PaginaEventos() {
       <NavegacionMinisterio
         secciones={seccionesVisibles(
           (recurso, accion) => rolPuede(usuario, accion, recurso),
-          misTurnos.length > 0,
+          misTurnos.length > 0 || tieneEquipo,
         )}
+        ministerioId={filtroMinisterio}
+      />
+
+      <FiltroMinisterio
+        ministerios={ministerios.map((ministerio) => ({ id: ministerio.id, nombre: ministerio.nombre }))}
+        actual={filtroMinisterio}
       />
 
       {ministeriosPermitidos.length > 0 ? (
         <FormularioEvento
           accion="crear"
-          ministerioId={ministeriosPermitidos.length === 1 ? ministeriosPermitidos[0].id : undefined}
+          ministerioId={
+            ministeriosPermitidos.length === 1
+              ? ministeriosPermitidos[0].id
+              : ministeriosPermitidos.some((ministerio) => ministerio.id === filtroMinisterio)
+                ? (filtroMinisterio ?? undefined)
+                : undefined
+          }
           ministerios={ministeriosPermitidos.map((ministerio) => ({
             id: ministerio.id,
             nombre: ministerio.nombre,
@@ -141,7 +166,11 @@ export default async function PaginaEventos() {
 
       <ListadoResponsivo
         filas={filas}
-        etiquetas={['Evento', 'Fecha', 'Deben estar', 'Lugar', 'Sirven', 'Estado']}
+        etiquetas={[
+          'Evento',
+          'Fecha',
+          ...(variosMinisterios ? ['Ministerio'] : []),
+          'Deben estar', 'Lugar', 'Confirmaciones']}
         placeholderBuscador="Buscar evento, fecha o lugar…"
         accionesCabecera={puede(usuario, 'editar', 'evento')}
         mensajeVacio={

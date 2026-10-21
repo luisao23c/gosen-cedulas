@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Box, Tab, Tabs } from '@mui/material'
-import { SECCIONES_MINISTERIO, esSeccionActiva } from '@/lib/ministerio'
+import { SECCIONES_MINISTERIO, esSeccionActiva, rutaConMinisterio } from '@/lib/ministerio'
 import { movimiento, radios } from '@/theme/theme'
 
 /**
@@ -14,7 +14,14 @@ import { movimiento, radios } from '@/theme/theme'
  * entrar. En móvil las pestañas se deslizan hacia los lados en vez de apretarse;
  * el corte lo aplica el CSS del tema, igual que en el resto de la aplicación.
  */
-export default function NavegacionMinisterio({ secciones }: { secciones: string[] }) {
+export default function NavegacionMinisterio({
+  secciones,
+  ministerioId,
+}: {
+  secciones: string[]
+  /** Ministerio elegido en el filtro: se conserva al cambiar de pestaña */
+  ministerioId?: number | null
+}) {
   const ruta = usePathname()
   const visibles = SECCIONES_MINISTERIO.filter((seccion) => secciones.includes(seccion.ruta))
   const activa = visibles.find((seccion) => esSeccionActiva(ruta, seccion.ruta))?.ruta
@@ -50,7 +57,7 @@ export default function NavegacionMinisterio({ secciones }: { secciones: string[
           <Tab
             key={seccion.ruta}
             component={Link}
-            href={seccion.ruta}
+            href={rutaConMinisterio(seccion.ruta, ministerioId)}
             value={seccion.ruta}
             label={seccion.etiqueta}
             aria-current={esSeccionActiva(ruta, seccion.ruta) ? 'page' : undefined}

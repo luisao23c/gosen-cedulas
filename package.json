@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "iconos": "node scripts/generar-iconos.mjs",
     "db:setup": "node scripts/crear-esquema.mjs",
     "db:migrar-roles": "node scripts/migrar-roles.mjs",
     "db:migrar-integrantes": "node scripts/migrar-integrantes.mjs",

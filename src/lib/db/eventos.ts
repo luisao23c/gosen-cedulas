@@ -34,6 +34,7 @@ interface FilaTurno extends RowDataPacket {
   id: number
   evento_id: number
   usuario_id: number
+  funcion: string | null
   confirmado: number | boolean
   confirmado_en: Date | string | null
   llego_en: Date | string | null
@@ -50,7 +51,7 @@ const COLUMNAS_EVENTO = `e.id, e.ministerio_id, e.nombre, e.descripcion, e.fecha
   (SELECT COUNT(*) FROM servidor_evento s WHERE s.evento_id = e.id AND s.confirmado = 1) AS confirmados,
   (SELECT COUNT(*) FROM servidor_evento s WHERE s.evento_id = e.id AND s.llego_en IS NOT NULL) AS llegaron`
 
-const COLUMNAS_TURNO = `s.id, s.evento_id, s.usuario_id, s.confirmado, s.confirmado_en, s.llego_en,
+const COLUMNAS_TURNO = `s.id, s.evento_id, s.usuario_id, s.funcion, s.confirmado, s.confirmado_en, s.llego_en,
   s.latitud, s.longitud, s.direccion, s.registrado_por_id`
 
 /** MySQL entrega los DECIMAL como texto: se convierten al leer. */
@@ -93,6 +94,7 @@ function aTurno(fila: FilaTurno): TurnoEvento {
     id: fila.id,
     eventoId: fila.evento_id,
     usuarioId: fila.usuario_id,
+    funcion: fila.funcion,
     confirmado: Boolean(fila.confirmado),
     confirmadoEn: aInstante(fila.confirmado_en),
     llegoEn: aInstante(fila.llego_en),
@@ -279,14 +281,34 @@ export async function turnoDe(eventoId: number, usuarioId: number): Promise<Turn
   return fila ? aTurno(fila) : null
 }
 
-/** Suma servidores al evento. Los que ya estaban no se duplican ni se tocan. */
-export async function asignarTurnos(eventoId: number, usuarioIds: number[]): Promise<number> {
+/**
+ * Suma servidores al evento con el rol que tendrán. Los que ya estaban no se
+ * duplican ni se tocan (su rol se cambia con `cambiarFuncion`).
+ */
+export async function asignarTurnos(
+  eventoId: number,
+  usuarioIds: number[],
+  funcion: string | null = null,
+): Promise<number> {
   if (usuarioIds.length === 0) return 0
-  const valores = usuarioIds.map(() => '(?, ?)').join(', ')
-  const parametros = usuarioIds.flatMap((usuarioId) => [eventoId, usuarioId])
+  const valores = usuarioIds.map(() => '(?, ?, ?)').join(', ')
+  const parametros = usuarioIds.flatMap((usuarioId) => [eventoId, usuarioId, funcion])
   const resultado = await ejecutar(
-    `INSERT IGNORE INTO servidor_evento (evento_id, usuario_id) VALUES ${valores}`,
+    `INSERT IGNORE INTO servidor_evento (evento_id, usuario_id, funcion) VALUES ${valores}`,
     parametros,
+  )
+  return resultado.affectedRows
+}
+
+/** Cambia el rol de un servidor en el evento (null lo deja sin definir). */
+export async function cambiarFuncion(
+  eventoId: number,
+  usuarioId: number,
+  funcion: string | null,
+): Promise<number> {
+  const resultado = await ejecutar(
+    `UPDATE servidor_evento SET funcion = ? WHERE evento_id = ? AND usuario_id = ?`,
+    [funcion, eventoId, usuarioId],
   )
   return resultado.affectedRows
 }

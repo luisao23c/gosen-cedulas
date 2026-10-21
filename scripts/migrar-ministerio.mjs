@@ -133,7 +133,8 @@ async function migrar(conexion) {
       equipo_id         INT UNSIGNED NOT NULL,
       responsable_id    INT UNSIGNED NOT NULL,
       asignado_a_id     INT UNSIGNED NULL,
-      prestado_en       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      evento_id         INT UNSIGNED NULL,
+      prestado_en      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
       devuelto_en       DATETIME     NULL,
       estado_entrega    ENUM('BUENO','CON_DETALLE','DANADO') NOT NULL DEFAULT 'BUENO',
       estado_devolucion ENUM('BUENO','CON_DETALLE','DANADO') NULL,
@@ -171,6 +172,7 @@ async function migrar(conexion) {
       id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
       evento_id         INT UNSIGNED NOT NULL,
       usuario_id        INT UNSIGNED NOT NULL,
+      funcion           VARCHAR(80)  NULL,
       confirmado        TINYINT(1)   NOT NULL DEFAULT 0,
       confirmado_en     DATETIME     NULL,
       llego_en          DATETIME     NULL,
@@ -185,6 +187,38 @@ async function migrar(conexion) {
       KEY idx_servidor_evento_evento (evento_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`)
   log('tablas ministerio, equipo, prestamo, evento y servidor_evento listas')
+
+  // Bases creadas antes de los roles por evento: se añade la función del turno
+  const columnasTurno = await columnasDe(conexion, 'servidor_evento')
+  if (!columnasTurno.has('funcion')) {
+    await conexion.query(
+      `ALTER TABLE servidor_evento ADD COLUMN funcion VARCHAR(80) NULL AFTER usuario_id`,
+    )
+    log('servidor_evento.funcion añadida')
+  }
+
+  // Bases anteriores a ligar préstamos con eventos
+  const columnasPrestamo = await columnasDe(conexion, 'prestamo')
+  if (!columnasPrestamo.has('evento_id')) {
+    await conexion.query(
+      `ALTER TABLE prestamo ADD COLUMN evento_id INT UNSIGNED NULL AFTER asignado_a_id,
+         ADD KEY idx_prestamo_evento (evento_id)`,
+    )
+    log('prestamo.evento_id añadida')
+  }
+
+  // Bases anteriores a la confirmación de recogida y de devolución por quien lleva el equipo
+  if (!columnasPrestamo.has('recogido_en')) {
+    await conexion.query(
+      `ALTER TABLE prestamo
+         ADD COLUMN recogido_en DATETIME NULL AFTER prestado_en,
+         ADD COLUMN devolucion_avisada_en DATETIME NULL AFTER recogido_en,
+         ADD COLUMN estado_devolucion_avisado ENUM('BUENO','CON_DETALLE','DANADO') NULL AFTER devolucion_avisada_en`,
+    )
+    // Lo que ya estaba prestado se da por recogido: así no aparece «por recoger» de pronto
+    await conexion.query(`UPDATE prestamo SET recogido_en = prestado_en WHERE recogido_en IS NULL`)
+    log('prestamo.recogido_en y devolución avisada añadidas')
+  }
 
   /* ── 2) La cuenta sabe a qué ministerio pertenece ─────────── */
   const columnasUsuario = await columnasDe(conexion, 'usuario')
@@ -311,6 +345,16 @@ async function migrar(conexion) {
     )
   ) {
     añadidas.push('evento → creador')
+  }
+  if (
+    await agregarClaveAjena(
+      conexion,
+      'prestamo',
+      'fk_prestamo_evento',
+      'FOREIGN KEY (evento_id) REFERENCES evento (id) ON DELETE SET NULL ON UPDATE CASCADE',
+    )
+  ) {
+    añadidas.push('prestamo → evento')
   }
   if (
     await agregarClaveAjena(

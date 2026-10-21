@@ -112,3 +112,49 @@ export async function actualizarMinisterio(
 export async function desactivarMinisterio(id: number): Promise<void> {
   await ejecutar(`UPDATE ministerio SET activo = 0 WHERE id = ?`, [id])
 }
+
+/** Cuenta que pertenece a un ministerio (las de organización NO cuentan como miembros). */
+export interface MiembroMinisterio {
+  id: number
+  nombre: string
+  email: string
+  rolNombre: string
+  ministerioId: number
+}
+
+/**
+ * Integrantes de UN ministerio: las cuentas activas cuyo `ministerio_id` es ese.
+ * Es la única lista de la que sale «a quién se le presta un equipo»: el equipo es del
+ * ministerio, así que solo lo lleva alguien del ministerio (ni siquiera la organización).
+ */
+export async function listarMiembros(ministerioId: number): Promise<MiembroMinisterio[]> {
+  const filas = await consultar<
+    RowDataPacket & { id: number; nombre: string; email: string; rol_nombre: string }
+  >(
+    `SELECT u.id, u.nombre, u.email, r.nombre AS rol_nombre
+       FROM usuario u
+       JOIN rol r ON r.id = u.rol_id
+      WHERE u.activo = 1 AND u.ministerio_id = ?
+      ORDER BY u.nombre`,
+    [ministerioId],
+  )
+  return filas.map((fila) => ({
+    id: fila.id,
+    nombre: fila.nombre,
+    email: fila.email,
+    rolNombre: fila.rol_nombre,
+    ministerioId,
+  }))
+}
+
+/** ¿Esta cuenta activa es miembro de ese ministerio? (para validar lo que llega del cliente) */
+export async function esMiembroDeMinisterio(
+  usuarioId: number,
+  ministerioId: number,
+): Promise<boolean> {
+  const fila = await consultarUno<RowDataPacket>(
+    `SELECT 1 AS si FROM usuario WHERE id = ? AND ministerio_id = ? AND activo = 1 LIMIT 1`,
+    [usuarioId, ministerioId],
+  )
+  return fila != null
+}

@@ -1,7 +1,7 @@
 'use client'
 
-import { Box, Divider, FormControlLabel, MenuItem, Stack, Switch, TextField, Typography } from '@mui/material'
-import { SITUACIONES, ETIQUETAS_SITUACION, type Integrante } from '@/types/domain'
+import { Box, Divider, FormControlLabel, Stack, Switch, TextField, Typography } from '@mui/material'
+import type { Integrante } from '@/types/domain'
 import CampoUbicacion, { type UbicacionMarcada } from '@/components/CampoUbicacion'
 
 /**
@@ -119,18 +119,9 @@ export default function CamposIntegrante({
             label="Fecha de nacimiento"
             valor={inicial?.fechaNacimiento ?? null}
           />
-          <TextField
-            select
-            name="situacion"
-            label="Situación"
-            defaultValue={inicial?.situacion ?? 'ACTIVO'}
-          >
-            {SITUACIONES.map((situacion) => (
-              <MenuItem key={situacion} value={situacion}>
-                {ETIQUETAS_SITUACION[situacion]}
-              </MenuItem>
-            ))}
-          </TextField>
+          {/* Ya no se pregunta: una persona nueva entra como activa y, al editar, conserva la
+              situación que tenía (la baja se hace con «Dar de baja»). */}
+          <input type="hidden" name="situacion" value={inicial?.situacion ?? 'ACTIVO'} />
         </Box>
       </Seccion>
 

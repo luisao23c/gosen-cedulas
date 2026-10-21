@@ -2,7 +2,7 @@
 
 import { IconButton, MenuItem, Stack, TextField, Tooltip } from '@mui/material'
 import EditIcon from '@mui/icons-material/Edit'
-import VideocamIcon from '@mui/icons-material/Videocam'
+import Inventory2Icon from '@mui/icons-material/Inventory2'
 import { guardarEquipo, editarEquipo } from '@/features/ministerio/acciones'
 import type { AccionFormulario, OpcionMinisterio } from '@/features/tipos'
 import { ESTATUS_EQUIPO, ETIQUETAS_ESTATUS_EQUIPO, type EstatusEquipo } from '@/types/domain'
@@ -51,7 +51,7 @@ export default function FormularioEquipo({
           </IconButton>
         </Tooltip>
       ) : (
-        <AccionPrincipal etiqueta="Nuevo equipo" icono={<VideocamIcon />} alPulsar={abrir} />
+        <AccionPrincipal etiqueta="Nuevo equipo" icono={<Inventory2Icon />} alPulsar={abrir} />
       )}
 
       <DialogoFormulario
@@ -93,7 +93,7 @@ export default function FormularioEquipo({
             defaultValue={inicial?.nombre ?? ''}
             required
             autoFocus={esEdicion || ministerioId != null}
-            placeholder="Ej.: Cámara principal, Tripié, Micrófono…"
+            placeholder="Ej.: Cámara principal, Micrófono, Guitarra, Proyector…"
           />
 
           <TextField

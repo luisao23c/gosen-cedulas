@@ -458,6 +458,21 @@ y distancia al punto del evento** (`AccionLlegada` + `distanciaKm`), y la fila d
 registró («Él mismo» / «El encargado (marcó por él)»). `hora_llegada` es lo que permite decir si
 llegó a tiempo.
 
+**Prestar solo a integrantes del ministerio (2026-10-21).** El equipo es del ministerio: presta quien tenga `prestamo:crear` sobre ese ministerio (el rol **Encargado de ministerio** y el Administrador; el Servidor no) y **solo a una cuenta activa con `ministerio_id` = el del equipo** (`listarMiembros` / `esMiembroDeMinisterio`, validado en `guardarPrestamo`; ni la organización cuenta como miembro). Ya no se pregunta «quién lo trae» aparte: un solo campo «¿A quién se le presta?» y esa persona queda como responsable y asignada.
+
+**Recoger y devolver con confirmación (2026-10-21).** Un préstamo tiene fases deducidas de sus marcas (`lib/prestamo.ts`): *por recoger* (`recogido_en` NULL) → *prestado* → *por revisar* (`devolucion_avisada_en`, con el estado que declara quien lo trae) → *devuelto* (lo cierra el ministerio con `cerrarPrestamo`). Quien lo trae o a quien se asignó confirma **sin permiso de módulo** (lo autoriza el propio préstamo, `autorizarSobrePrestamo` en `features/ministerio/acciones.ts`) desde la pestaña **Mi servicio** (antes «Mis turnos», misma ruta); el encargado confirma la recepción con `prestamo:editar`. Al crear un préstamo se elige si ya se lo llevó o lo recogerá. `npm run db:migrar-ministerio` añade las columnas.
+
+**Rol por evento (2026-10-20).** Cada turno lleva una `funcion` libre («Cámara 1», «Switcher»):
+`servidor_evento.funcion` (`npm run db:migrar-ministerio` la añade a bases existentes). Se fija al
+asignar (`AsignarServidores`, un rol para todo el grupo) y se cambia por persona con `AccionFuncion`
+(`evento:asignar`). Se ve en el detalle del evento y en «Mis turnos».
+
+**Préstamo ligado a un evento (2026-10-20).** `prestamo.evento_id` (opcional, FK `ON DELETE SET
+NULL`; `npm run db:migrar-ministerio` la añade). `FormularioPrestamo` ofrece solo los eventos
+próximos del **mismo ministerio** que el equipo y el servidor lo vuelve a comprobar
+(`guardarPrestamo`). Se ve en la columna «Evento» de Préstamos y en el detalle del evento («Equipo
+que salió para este evento», solo para quien puede ver préstamos).
+
 **Reglas aprendidas al verificarlo:**
 
 - La ubicación la espera **la app** (tiempo máximo propio): con el aviso de permisos del navegador
@@ -469,6 +484,8 @@ llegó a tiempo.
   aparte de `NavegacionMinisterio.tsx`.
 
 ### 7.8 Campos diferenciadores y recomendación en Lobby (2026-10-20)
+
+**Ranking del Lobby (2026-10-21).** Las células salen numeradas (1 = la que mejor le queda). Cada una tiene un puntaje 0–100 = criterios cumplidos (70 %; los obligatorios pesan el doble) + cercanía (30 %, baja a 0 a 15 km) — `puntuarCandidata` y `compararCandidatas` en `lib/campos.ts`. Las que fallan un obligatorio van después de las que cumplen. Cada tarjeta muestra qué cumple (✓) y qué le falta (✗, en rojo si es obligatorio), no solo «cumple 2 de 3». Sin respuestas o sin punto, esa parte queda neutra.
 
 Pedido del usuario: *«que se creen preguntas de rangos o selects […] para que en Lobby se
 recomiende mejor a cuál célula va alguien»*. Se modeló en tres piezas, y las tres son **datos**

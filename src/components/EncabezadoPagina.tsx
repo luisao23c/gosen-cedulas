@@ -20,7 +20,6 @@ import { radios } from '@/theme/theme'
 export default function EncabezadoPagina({
   titulo,
   subtitulo,
-  etiqueta,
   icono,
   volver,
   children,
@@ -77,15 +76,8 @@ export default function EncabezadoPagina({
           ) : null}
 
           <Box sx={{ minWidth: 0 }}>
-            {etiqueta ? (
-              <Typography
-                variant="overline"
-                color="text.secondary"
-                sx={(tema) => ({ display: 'none', [tema.breakpoints.up('md')]: { display: 'block' } })}
-              >
-                {etiqueta}
-              </Typography>
-            ) : null}
+            {/* `etiqueta` ya no se pinta: repetía la sección que muestran el menú y la barra
+                superior («Estructura», «Servicio») y le quitaba aire al título. */}
             <Typography
               variant="h4"
               component="h1"

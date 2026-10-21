@@ -1,7 +1,11 @@
-import { Alert, Button, Stack } from '@mui/material'
+import { Alert, Button, Chip, Paper, Stack, Typography } from '@mui/material'
 import EventAvailableIcon from '@mui/icons-material/EventAvailable'
 import { exigirSesion } from '@/lib/auth/guardas'
 import { listarMisTurnos } from '@/lib/db/eventos'
+import { listarPrestamos } from '@/lib/db/prestamos'
+import { chipDeFase, fasePrestamo, SIGUIENTE_PASO_PERSONA } from '@/lib/prestamo'
+import AccionAvisarDevolucion from '@/components/AccionAvisarDevolucion'
+import AccionRecogida from '@/components/AccionRecogida'
 import { formatearFechaConDia, hoyISO } from '@/lib/fechas'
 import { etiquetaLlegada, tonoDeLlegada } from '@/lib/servicio'
 import AccionConfirmar from '@/components/AccionConfirmar'
@@ -10,7 +14,7 @@ import EncabezadoPagina from '@/components/EncabezadoPagina'
 import ListadoResponsivo, { type FilaListado } from '@/components/ListadoResponsivo'
 
 export const instant = false
-export const metadata = { title: 'Mis turnos · Gosen' }
+export const metadata = { title: 'Mi servicio · Gosen' }
 
 /**
  * Mis turnos: los eventos en los que YO estoy asignado.
@@ -23,7 +27,11 @@ export const metadata = { title: 'Mis turnos · Gosen' }
 export default async function PaginaMisTurnos() {
   const usuario = await exigirSesion()
   const hoy = hoyISO()
-  const turnos = await listarMisTurnos(usuario.id)
+  const [turnos, prestamos] = await Promise.all([
+    listarMisTurnos(usuario.id),
+    // Equipo que llevo o que me asignaron y todavía no se cierra
+    listarPrestamos(usuario, { usuarioId: usuario.id }),
+  ])
 
   const pendientes = turnos.filter(
     ({ evento, turno }) => evento.fecha >= hoy && (!turno.confirmado || !turno.llegoEn),
@@ -41,6 +49,12 @@ export default async function PaginaMisTurnos() {
       },
       celdas: [
         { clave: 'evento', etiqueta: 'Evento', texto: evento.nombre, destacado: true },
+        {
+          clave: 'funcion',
+          etiqueta: 'Mi rol',
+          texto: turno.funcion ?? 'Sin rol definido',
+          conEtiqueta: true,
+        },
         { clave: 'fecha', etiqueta: 'Fecha', texto: formatearFechaConDia(evento.fecha) },
         {
           clave: 'lugar',
@@ -105,11 +119,52 @@ export default async function PaginaMisTurnos() {
   return (
     <Stack spacing={3}>
       <EncabezadoPagina
-        titulo="Mis turnos"
+        titulo="Mi servicio"
         etiqueta="Servicio"
         icono={<EventAvailableIcon />}
-        subtitulo={`${turnos.length} ${turnos.length === 1 ? 'evento' : 'eventos'} en los que te toca servir.`}
+        subtitulo="Tus turnos en eventos y el equipo que tienes a tu cargo."
       />
+
+      {prestamos.length > 0 ? (
+        <Stack spacing={1.5}>
+          <Typography variant="h5" component="h2">
+            Equipo a mi cargo
+          </Typography>
+          {prestamos.map((prestamo) => {
+            const fase = fasePrestamo(prestamo)
+            const chip = chipDeFase(fase, prestamo.estadoDevolucion)
+            return (
+              <Paper key={prestamo.id} variant="outlined" sx={{ p: 2 }}>
+                <Stack spacing={1.25}>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Typography variant="subtitle1" sx={{ flex: 1, minWidth: 0 }}>
+                      {prestamo.nombreEquipo ?? `Equipo #${prestamo.equipoId}`}
+                    </Typography>
+                    <Chip size="small" label={chip.etiqueta} color={chip.tono} />
+                  </Stack>
+                  <Typography variant="body2" color="text.secondary">
+                    {prestamo.nombreEvento ? `Para ${prestamo.nombreEvento}. ` : ''}
+                    {SIGUIENTE_PASO_PERSONA[fase]}
+                  </Typography>
+                  {fase === 'POR_RECOGER' ? (
+                    <AccionRecogida
+                      prestamoId={prestamo.id}
+                      equipo={prestamo.nombreEquipo ?? null}
+                      comoBoton
+                    />
+                  ) : null}
+                  {fase === 'PRESTADO' ? (
+                    <AccionAvisarDevolucion
+                      prestamoId={prestamo.id}
+                      equipo={prestamo.nombreEquipo ?? null}
+                    />
+                  ) : null}
+                </Stack>
+              </Paper>
+            )
+          })}
+        </Stack>
+      ) : null}
 
       {pendientes.length > 0 ? (
         <Alert severity="info">
@@ -119,14 +174,16 @@ export default async function PaginaMisTurnos() {
         </Alert>
       ) : null}
 
+      {turnos.length > 0 || prestamos.length === 0 ? (
       <ListadoResponsivo
         filas={filas}
-        etiquetas={['Evento', 'Fecha', 'Lugar', 'Debo estar', 'Mi confirmación', 'Mi llegada']}
+        etiquetas={['Evento', 'Mi rol', 'Fecha', 'Lugar', 'Debo estar', 'Mi confirmación', 'Mi llegada']}
         placeholderBuscador="Buscar evento o lugar…"
         accionesCabecera
         iconoVacio={<EventAvailableIcon />}
         mensajeVacio="No estás asignado a ningún evento. Cuando el encargado del ministerio te agregue a la lista de un evento, aparecerá aquí para que confirmes y marques tu llegada."
       />
+      ) : null}
 
       <Button href="/panel/ministerio" sx={{ alignSelf: 'flex-start' }}>
         Volver al ministerio

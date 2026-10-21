@@ -27,16 +27,18 @@ import DashboardIcon from '@mui/icons-material/Dashboard'
 import AccountTreeIcon from '@mui/icons-material/AccountTree'
 import AssignmentIcon from '@mui/icons-material/Assignment'
 import PersonPinCircleIcon from '@mui/icons-material/PersonPinCircle'
-import VideocamIcon from '@mui/icons-material/Videocam'
+import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism'
 import GroupIcon from '@mui/icons-material/Group'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import TuneIcon from '@mui/icons-material/Tune'
 import LogoutIcon from '@mui/icons-material/Logout'
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import { tienePermiso, type Accion, type Recurso } from '@/lib/auth/permisos'
 import { inicialesDe } from '@/lib/nombres'
 import { salir } from '@/features/auth/acciones'
+import LogoGosen from '@/components/LogoGosen'
 import AvisoProvider from '@/components/AvisoProvider'
-import { degradados, medidas, movimiento, radios, sombras } from '@/theme/theme'
+import { medidas, movimiento, radios } from '@/theme/theme'
 
 interface ElementoMenu {
   etiqueta: string
@@ -46,12 +48,26 @@ interface ElementoMenu {
   recurso?: Recurso
   /** Acción necesaria sobre ese recurso (por defecto «ver») */
   accion?: Accion
+  /** Bloque del menú lateral al que pertenece (sin grupo = suelto, arriba del todo) */
+  grupo?: 'Estructura' | 'Servicio' | 'Administración'
 }
 
 const ELEMENTOS: ElementoMenu[] = [
   { etiqueta: 'Inicio', ruta: '/panel', icono: <DashboardIcon /> },
-  { etiqueta: 'Ramas', ruta: '/panel/ramas', icono: <AccountTreeIcon />, recurso: 'rama' },
-  { etiqueta: 'Células', ruta: '/panel/celulas', icono: <AssignmentIcon />, recurso: 'celula' },
+  {
+    etiqueta: 'Ramas',
+    ruta: '/panel/ramas',
+    icono: <AccountTreeIcon />,
+    recurso: 'rama',
+    grupo: 'Estructura',
+  },
+  {
+    etiqueta: 'Células',
+    ruta: '/panel/celulas',
+    icono: <AssignmentIcon />,
+    recurso: 'celula',
+    grupo: 'Estructura',
+  },
   // El lobby no enseña listados: sirve para dar de alta a quien llega nuevo
   {
     etiqueta: 'Lobby',
@@ -59,19 +75,44 @@ const ELEMENTOS: ElementoMenu[] = [
     icono: <PersonPinCircleIcon />,
     recurso: 'integrante',
     accion: 'crear',
+    grupo: 'Estructura',
   },
   // El ministerio cruza las ramas: equipos, préstamos y eventos de servicio
   {
     etiqueta: 'Ministerio',
     ruta: '/panel/ministerio',
-    icono: <VideocamIcon />,
+    icono: <VolunteerActivismIcon />,
     recurso: 'ministerio',
+    grupo: 'Servicio',
   },
-  { etiqueta: 'Usuarios', ruta: '/panel/usuarios', icono: <GroupIcon />, recurso: 'usuario' },
-  { etiqueta: 'Roles', ruta: '/panel/roles', icono: <AdminPanelSettingsIcon />, recurso: 'rol' },
+  {
+    etiqueta: 'Usuarios',
+    ruta: '/panel/usuarios',
+    icono: <GroupIcon />,
+    recurso: 'usuario',
+    grupo: 'Administración',
+  },
+  {
+    etiqueta: 'Roles',
+    ruta: '/panel/roles',
+    icono: <AdminPanelSettingsIcon />,
+    recurso: 'rol',
+    grupo: 'Administración',
+  },
   // Catálogo de preguntas con las que se recomienda una célula en Lobby
-  { etiqueta: 'Campos', ruta: '/panel/campos', icono: <TuneIcon />, recurso: 'campo' },
+  {
+    etiqueta: 'Campos',
+    ruta: '/panel/campos',
+    icono: <TuneIcon />,
+    recurso: 'campo',
+    grupo: 'Administración',
+  },
 ]
+
+/** Cuántos destinos caben en la barra inferior del móvil antes de usar «Más». */
+const MAXIMO_BARRA_INFERIOR = 4
+/** Los destinos que se quedan en la barra cuando hay que recortar (en este orden). */
+const PRIORIDAD_BARRA = ['/panel', '/panel/celulas', '/panel/ministerio', '/panel/ramas']
 
 /** Inicio es la raíz del panel: no debe quedar "activo" en las demás rutas. */
 function esActiva(ruta: string, destino: string): boolean {
@@ -110,38 +151,32 @@ export default function PanelChrome({
   const seccion = visibles.find((elemento) => esActiva(ruta, elemento.ruta))?.etiqueta ?? 'Panel'
   const iniciales = inicialesDe(usuario.nombre)
 
+  // Barra inferior: con más de 5 destinos se aprietan; los principales se quedan y el resto va en «Más»
+  const hayExceso = visibles.length > MAXIMO_BARRA_INFERIOR + 1
+  const enBarra = hayExceso
+    ? [
+        ...PRIORIDAD_BARRA.flatMap((destino) => visibles.filter((elemento) => elemento.ruta === destino)),
+        ...visibles.filter((elemento) => !PRIORIDAD_BARRA.includes(elemento.ruta)),
+      ]
+        .slice(0, MAXIMO_BARRA_INFERIOR)
+        .sort((a, b) => visibles.indexOf(a) - visibles.indexOf(b))
+    : visibles
+  const enMas = visibles.filter((elemento) => !enBarra.includes(elemento))
+  const activoEnMas = enMas.some((elemento) => esActiva(ruta, elemento.ruta))
+  const [masAbierto, setMasAbierto] = useState(false)
+
   const cerrarSesion = () => {
     setAncla(null)
     void salir()
   }
 
-  /** Insignia de marca: identifica la aplicación en el menú y en la barra superior. */
+  /** Marca: el logo de Gosén y, debajo, el rol de quien tiene la sesión. */
   const marca = (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
-      <Box
-        aria-hidden
-        sx={{
-          width: 36,
-          height: 36,
-          flexShrink: 0,
-          display: 'grid',
-          placeItems: 'center',
-          borderRadius: `${radios.medio}px`,
-          backgroundImage: degradados.marca,
-          color: 'primary.contrastText',
-          boxShadow: sombras.reposo,
-        }}
-      >
-        <AccountTreeIcon fontSize="small" />
-      </Box>
-      <Box sx={{ minWidth: 0 }}>
-        <Typography variant="subtitle1" noWrap sx={{ lineHeight: 1.2 }}>
-          Gosen
-        </Typography>
-        <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>
-          {usuario.rolNombre}
-        </Typography>
-      </Box>
+    <Box sx={{ minWidth: 0 }}>
+      <LogoGosen alto={20} />
+      <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', mt: 0.5 }}>
+        {usuario.rolNombre}
+      </Typography>
     </Box>
   )
 
@@ -168,18 +203,22 @@ export default function PanelChrome({
         {marca}
       </Box>
 
-      <Box sx={{ px: 1.5, pt: 2.5, pb: 1 }}>
-        <Typography variant="overline" color="text.secondary" sx={{ px: 1.5 }}>
-          Secciones
-        </Typography>
-      </Box>
-
-      <List sx={{ px: 1.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-        {visibles.map((elemento) => {
+      <List sx={{ px: 1.5, pt: 2, display: 'flex', flexDirection: 'column', gap: 0.5, overflowY: 'auto' }}>
+        {visibles.map((elemento, indice) => {
           const activo = esActiva(ruta, elemento.ruta)
+          const abreGrupo = elemento.grupo != null && elemento.grupo !== visibles[indice - 1]?.grupo
           return (
+            <Box key={elemento.ruta} component="li" sx={{ display: 'contents' }}>
+              {abreGrupo ? (
+                <Typography
+                  variant="overline"
+                  color="text.secondary"
+                  sx={{ px: 1.5, pt: 1.5, pb: 0.25, display: 'block' }}
+                >
+                  {elemento.grupo}
+                </Typography>
+              ) : null}
             <ListItemButton
-              key={elemento.ruta}
               component={Link}
               href={elemento.ruta}
               selected={activo}
@@ -221,6 +260,7 @@ export default function PanelChrome({
                 />
               ) : null}
             </ListItemButton>
+            </Box>
           )
         })}
       </List>
@@ -356,13 +396,27 @@ export default function PanelChrome({
             pb: { xs: 18, md: 6 },
           }}
         >
-          <Box sx={{ maxWidth: medidas.anchoMaximoContenido, mx: 'auto' }}>{children}</Box>
+          {/* `key` por ruta: al cambiar de sección el contenido entra con un fundido corto */}
+          <Box
+            key={ruta}
+            sx={{
+              maxWidth: medidas.anchoMaximoContenido,
+              mx: 'auto',
+              animation: `entradaPagina ${movimiento.normal} ${movimiento.curva} both`,
+            }}
+          >
+            {children}
+          </Box>
         </Box>
 
         {/* Navegación inferior: solo móvil/tablet (patrón Flutter) */}
         <BottomNavigation
           showLabels
-          value={visibles.find((elemento) => esActiva(ruta, elemento.ruta))?.ruta ?? false}
+          value={
+            activoEnMas
+              ? 'mas'
+              : (enBarra.find((elemento) => esActiva(ruta, elemento.ruta))?.ruta ?? false)
+          }
           sx={{
             position: 'fixed',
             bottom: 0,
@@ -376,7 +430,7 @@ export default function PanelChrome({
             zIndex: 'appBar',
           }}
         >
-          {visibles.map((elemento) => {
+          {enBarra.map((elemento) => {
             const activo = esActiva(ruta, elemento.ruta)
             return (
               <BottomNavigationAction
@@ -407,7 +461,80 @@ export default function PanelChrome({
               />
             )
           })}
+          {enMas.length > 0 ? (
+            <BottomNavigationAction
+              value="mas"
+              label="Más"
+              onClick={() => setMasAbierto(true)}
+              aria-haspopup="dialog"
+              icon={
+                <Box
+                  aria-hidden
+                  sx={{
+                    width: 52,
+                    height: 30,
+                    display: 'grid',
+                    placeItems: 'center',
+                    borderRadius: `${radios.pill}px`,
+                    bgcolor: activoEnMas ? 'primary.light' : 'transparent',
+                    color: activoEnMas ? 'primary.main' : 'text.secondary',
+                    transition: `background-color ${movimiento.normal} ${movimiento.curva}, color ${movimiento.rapida} ${movimiento.curva}`,
+                  }}
+                >
+                  <MoreHorizIcon />
+                </Box>
+              }
+            />
+          ) : null}
         </BottomNavigation>
+
+        {/* Hoja «Más»: el resto de secciones, con zonas táctiles grandes */}
+        <Drawer
+          anchor="bottom"
+          open={masAbierto}
+          onClose={() => setMasAbierto(false)}
+          slotProps={{
+            paper: {
+              sx: {
+                borderTopLeftRadius: `${radios.extra}px`,
+                borderTopRightRadius: `${radios.extra}px`,
+                pb: 'max(16px, env(safe-area-inset-bottom))',
+              },
+            },
+          }}
+        >
+          <Box aria-hidden sx={{ display: 'grid', placeItems: 'center', pt: 1 }}>
+            <Box sx={{ width: 40, height: 4, borderRadius: `${radios.pill}px`, bgcolor: 'divider' }} />
+          </Box>
+          <Typography variant="overline" color="text.secondary" sx={{ px: 3, pt: 1.5, display: 'block' }}>
+            Más secciones
+          </Typography>
+          <List sx={{ px: 1.5 }}>
+            {enMas.map((elemento) => {
+              const activo = esActiva(ruta, elemento.ruta)
+              return (
+                <ListItemButton
+                  key={elemento.ruta}
+                  component={Link}
+                  href={elemento.ruta}
+                  selected={activo}
+                  onClick={() => setMasAbierto(false)}
+                  sx={{ gap: 1.5, minHeight: 56 }}
+                >
+                  <Box
+                    aria-hidden
+                    sx={{ display: 'flex', color: activo ? 'primary.main' : 'text.secondary' }}
+                  >
+                    {elemento.icono}
+                  </Box>
+                  <Typography variant="body1" sx={{ fontWeight: activo ? 700 : 500 }}>
+                    {elemento.etiqueta}
+                  </Typography>
+                </ListItemButton>
+              )
+            })}
+          </List>
+        </Drawer>
       </Box>
     </AvisoProvider>
   )

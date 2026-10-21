@@ -2,6 +2,9 @@
 
 import { revalidatePath } from 'next/cache'
 import { exigirPermisoAccion } from '@/lib/auth/guardas'
+import { getUsuarioActual } from '@/lib/auth/sesion'
+import { puede } from '@/lib/auth/permisos'
+import { dentroDelMinisterio } from '@/lib/db/alcance'
 import {
   esquemaDevolucion,
   esquemaEquipo,
@@ -9,6 +12,7 @@ import {
   esquemaMinisterio,
   esquemaMinisterioEdicion,
   esquemaPrestamo,
+  esquemaRecogida,
   primerError,
 } from '@/lib/validaciones'
 import {
@@ -26,9 +30,13 @@ import {
   abrirPrestamo,
   borrarPrestamoAbierto,
   cerrarPrestamo,
+  marcarDevolucionAvisada,
+  marcarRecogido,
   prestamoAbiertoDe,
   prestamoDeRegistro,
 } from '@/lib/db/prestamos'
+import { eventoDeRegistro } from '@/lib/db/eventos'
+import { esMiembroDeMinisterio } from '@/lib/db/ministerios'
 import type { EstadoFormulario } from '@/features/tipos'
 
 /**
@@ -45,6 +53,7 @@ function refrescarMinisterio(): void {
   revalidatePath('/panel/ministerio')
   revalidatePath('/panel/ministerio/equipos')
   revalidatePath('/panel/ministerio/prestamos')
+  revalidatePath('/panel/ministerio/mis-turnos')
 }
 
 function errorDeMySQL(error: unknown): string | null {
@@ -233,8 +242,9 @@ export async function guardarPrestamo(
 ): Promise<EstadoFormulario> {
   const datos = esquemaPrestamo.safeParse({
     equipoId: formData.get('equipoId'),
-    responsableId: formData.get('responsableId'),
     asignadoAId: formData.get('asignadoAId'),
+    eventoId: formData.get('eventoId'),
+    entregado: formData.get('entregado'),
     estadoEntrega: formData.get('estadoEntrega'),
     notas: formData.get('notas'),
   })
@@ -259,8 +269,28 @@ export async function guardarPrestamo(
     return { ok: false, error: 'Ese equipo está fuera de servicio: no se puede prestar.' }
   }
 
+  // A quién se le presta llega del cliente: tiene que ser miembro de ESTE ministerio
+  // (el equipo es del ministerio; no se presta a personas de fuera ni a la organización).
+  if (!(await esMiembroDeMinisterio(datos.data.asignadoAId, equipo.ministerioId))) {
+    return { ok: false, error: 'Solo se le puede prestar a un integrante de este ministerio.' }
+  }
+
+  // El evento llega del cliente: tiene que existir y ser del mismo ministerio que el equipo.
+  if (datos.data.eventoId != null) {
+    const evento = await eventoDeRegistro(datos.data.eventoId)
+    if (!evento || evento.ministerioId !== equipo.ministerioId) {
+      return { ok: false, error: 'Ese evento no es de este ministerio.' }
+    }
+  }
+
   try {
-    await abrirPrestamo({ ...datos.data, registradoPorId: permiso.usuario.id })
+    await abrirPrestamo({
+      ...datos.data,
+      // Quien lo lleva es quien responde por él: ya no se pregunta aparte
+      responsableId: datos.data.asignadoAId,
+      registradoPorId: permiso.usuario.id,
+      entregado: datos.data.entregado,
+    })
   } catch (error) {
     const mensaje = errorDeMySQL(error)
     if (mensaje) return { ok: false, error: mensaje }
@@ -299,6 +329,12 @@ export async function registrarDevolucion(
   })
   if ('error' in permiso) return { ok: false, error: permiso.error }
   if (registro.devueltoEn) return { ok: false, error: 'Ese préstamo ya se había cerrado.' }
+  if (!registro.recogidoEn) {
+    return {
+      ok: false,
+      error: 'Ese equipo todavía no se recoge: no hay nada que recibir. Cancela el préstamo si ya no va a salir.',
+    }
+  }
 
   await cerrarPrestamo(prestamoId, {
     estadoDevolucion: datos.data.estadoDevolucion,
@@ -306,6 +342,87 @@ export async function registrarDevolucion(
     devueltoPorId: permiso.usuario.id,
   })
   await sincronizarEstatusEquipo(registro.equipoId)
+
+  refrescarMinisterio()
+  return { ok: true }
+}
+
+/**
+ * Quién puede tocar un préstamo con las acciones «recogí» y «devolví»:
+ *  · quien lo trae o a quien se le asignó (lo autoriza el propio préstamo, no un
+ *    permiso de módulo: así un servidor puede confirmar lo suyo), o
+ *  · el ministerio, con `prestamo:editar` sobre ese ministerio.
+ * El id de la persona sale SIEMPRE de la sesión, nunca del formulario.
+ */
+async function autorizarSobrePrestamo(
+  prestamoId: number,
+): Promise<
+  | { registro: NonNullable<Awaited<ReturnType<typeof prestamoDeRegistro>>> }
+  | { error: string }
+> {
+  const actor = await getUsuarioActual()
+  if (!actor) return { error: 'Tu sesión ha caducado. Vuelve a entrar.' }
+
+  const registro = await prestamoDeRegistro(prestamoId)
+  if (!registro) return { error: 'Ese préstamo ya no existe.' }
+
+  const esPropio = actor.id === registro.responsableId || actor.id === registro.asignadoAId
+  if (esPropio) {
+    if (!dentroDelMinisterio(actor, registro.ministerioId)) {
+      return { error: 'Ese equipo es de otro ministerio.' }
+    }
+  } else if (!puede(actor, 'editar', 'prestamo', { ministerioId: registro.ministerioId })) {
+    return { error: 'Solo quien lleva el equipo o el encargado del ministerio puede hacer esto.' }
+  }
+  return { registro }
+}
+
+/** «Ya lo recogí»: pasa el préstamo de «por recoger» a «prestado». */
+export async function confirmarRecogida(
+  _estado: EstadoFormulario,
+  formData: FormData,
+): Promise<EstadoFormulario> {
+  const datos = esquemaRecogida.safeParse({ id: formData.get('id') })
+  if (!datos.success) return { ok: false, error: primerError(datos) ?? 'Revisa los datos.' }
+
+  const autorizado = await autorizarSobrePrestamo(datos.data.id)
+  if ('error' in autorizado) return { ok: false, error: autorizado.error }
+
+  const tocadas = await marcarRecogido(datos.data.id)
+  if (tocadas === 0) return { ok: false, error: 'Ese equipo ya estaba confirmado o ya volvió.' }
+
+  refrescarMinisterio()
+  return { ok: true }
+}
+
+/**
+ * «Ya lo devolví»: avisa al ministerio y le dice en qué estado. El préstamo
+ * queda «por revisar»; lo cierra el ministerio al recibirlo (registrarDevolucion).
+ */
+export async function avisarDevolucion(
+  _estado: EstadoFormulario,
+  formData: FormData,
+): Promise<EstadoFormulario> {
+  const datos = esquemaDevolucion.safeParse({
+    id: formData.get('id'),
+    estadoDevolucion: formData.get('estadoDevolucion'),
+    notas: formData.get('notas'),
+  })
+  if (!datos.success) return { ok: false, error: primerError(datos) ?? 'Revisa los datos.' }
+
+  const autorizado = await autorizarSobrePrestamo(datos.data.id)
+  if ('error' in autorizado) return { ok: false, error: autorizado.error }
+
+  const tocadas = await marcarDevolucionAvisada(datos.data.id, {
+    estado: datos.data.estadoDevolucion,
+    notas: datos.data.notas,
+  })
+  if (tocadas === 0) {
+    return {
+      ok: false,
+      error: 'No se puede avisar: el equipo aún no está confirmado como recogido, o ya se avisó o se cerró.',
+    }
+  }
 
   refrescarMinisterio()
   return { ok: true }

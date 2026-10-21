@@ -110,6 +110,7 @@ export default async function PaginaCelulas() {
         chip: {
           etiqueta: valores !== '' ? valores : 'Sin criterios',
           tono: valores !== '' ? 'primary' : 'default',
+          soloTabla: valores === '',
         },
       },
       {
@@ -119,6 +120,7 @@ export default async function PaginaCelulas() {
         chip: {
           etiqueta: celula.activa ? 'Activa' : 'Inactiva',
           tono: celula.activa ? 'success' : 'default',
+          soloTabla: celula.activa,
         },
       },
     ],

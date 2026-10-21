@@ -3,7 +3,7 @@
 import { IconButton, MenuItem, Stack, TextField, Tooltip, Typography } from '@mui/material'
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn'
 import { registrarDevolucion } from '@/features/ministerio/acciones'
-import { CONSERVACIONES, ETIQUETAS_CONSERVACION } from '@/types/domain'
+import { CONSERVACIONES, ETIQUETAS_CONSERVACION, type ConservacionEquipo } from '@/types/domain'
 import DialogoFormulario from '@/components/DialogoFormulario'
 import { useFormularioDialogo } from '@/components/useFormularioDialogo'
 
@@ -16,10 +16,13 @@ export default function AccionDevolucion({
   prestamoId,
   equipo,
   responsable,
+  estadoAvisado = null,
 }: {
   prestamoId: number
   equipo: string | null
   responsable: string | null
+  /** Si quien lo trae ya avisó que lo devolvió, el estado que declaró (viene preseleccionado) */
+  estadoAvisado?: ConservacionEquipo | null
 }) {
   const { abierto, abrir, cerrar, error, pendiente, enviar } = useFormularioDialogo(
     registrarDevolucion,
@@ -28,19 +31,23 @@ export default function AccionDevolucion({
 
   return (
     <>
-      <Tooltip title="Registrar devolución">
-        <IconButton color="primary" onClick={abrir} aria-label="Registrar devolución">
+      <Tooltip title={estadoAvisado ? 'Confirmar que lo recibiste' : 'Registrar devolución'}>
+        <IconButton
+          color={estadoAvisado ? 'warning' : 'primary'}
+          onClick={abrir}
+          aria-label={estadoAvisado ? 'Confirmar recepción' : 'Registrar devolución'}
+        >
           <AssignmentTurnedInIcon fontSize="small" />
         </IconButton>
       </Tooltip>
 
       <DialogoFormulario
         abierto={abierto}
-        titulo="Registrar devolución"
+        titulo={estadoAvisado ? 'Confirmar recepción' : 'Registrar devolución'}
         descripcion={
           equipo ? `«${equipo}»${responsable ? ` · lo traía ${responsable}` : ''}` : undefined
         }
-        etiquetaGuardar="Registrar devolución"
+        etiquetaGuardar={estadoAvisado ? 'Confirmar recepción' : 'Registrar devolución'}
         alCerrar={cerrar}
         alEnviar={enviar}
         pendiente={pendiente}
@@ -50,14 +57,16 @@ export default function AccionDevolucion({
           <input type="hidden" name="id" value={prestamoId} />
 
           <Typography variant="body2" color="text.secondary">
-            Al guardar se anota la hora a la que volvió el equipo y queda disponible otra vez.
+            {estadoAvisado
+              ? `Quien lo trae avisó que lo devolvió «${ETIQUETAS_CONSERVACION[estadoAvisado].toLowerCase()}». Revísalo y confirma en qué estado lo recibes.`
+              : 'Al guardar se anota la hora a la que volvió el equipo y queda disponible otra vez.'}
           </Typography>
 
           <TextField
             select
             name="estadoDevolucion"
             label="¿En qué estado lo recibiste?"
-            defaultValue="BUENO"
+            defaultValue={estadoAvisado ?? 'BUENO'}
             required
             autoFocus
           >

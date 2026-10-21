@@ -321,13 +321,20 @@ export const esquemaEquipoEdicion = z.object({
 /** Abrir un préstamo: quién se lo lleva, a quién se le asigna y cómo sale. */
 export const esquemaPrestamo = z.object({
   equipoId: idRequerido('Elige el equipo'),
-  responsableId: idRequerido('Elige quién trae el equipo'),
-  asignadoAId: numeroOpcional,
+  /** A quién se le presta (queda como quien lo lleva y responde por él); tiene que ser del ministerio */
+  asignadoAId: idRequerido('Elige a quién se le presta el equipo'),
+  /** Evento para el que sale el equipo; el servidor comprueba que sea del mismo ministerio */
+  eventoId: numeroOpcional,
+  /** Marcada = ya se lo llevó; sin marcar = queda «por recoger» hasta que confirme */
+  entregado: booleano,
   estadoEntrega: z.enum(CONSERVACIONES, { message: 'Estado no válido' }),
   notas: textoOpcional(500),
 })
 
-/** Cerrar un préstamo: cómo volvió el equipo. */
+/** Confirmar que ya se recogió el equipo. */
+export const esquemaRecogida = z.object({ id: idRequerido('Préstamo no válido') })
+
+/** Cerrar un préstamo: cómo volvió el equipo. (También lo usa quien avisa que ya lo devolvió.) */
 export const esquemaDevolucion = z.object({
   id: idRequerido('Préstamo no válido'),
   estadoDevolucion: z.enum(CONSERVACIONES, { message: 'Estado no válido' }),
@@ -363,6 +370,15 @@ export const esquemaAsignacion = z.object({
     .array(z.number({ message: 'Cuenta no válida' }).int().positive())
     .max(200, { message: 'Demasiados servidores de una vez' })
     .transform((lista) => Array.from(new Set(lista))),
+  /** Rol que tendrán en el evento; vacío = sin definir todavía */
+  funcion: textoOpcional(80),
+})
+
+/** Cambiar el rol de un servidor ya asignado al evento. */
+export const esquemaFuncion = z.object({
+  eventoId: idRequerido('Evento no válido'),
+  usuarioId: idRequerido('Servidor no válido'),
+  funcion: textoOpcional(80),
 })
 
 /**

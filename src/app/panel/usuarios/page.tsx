@@ -107,6 +107,7 @@ export default async function PaginaUsuarios({
           chip: {
             etiqueta: persona.activo ? 'Activa' : 'Desactivada',
             tono: persona.activo ? 'success' : 'default',
+            soloTabla: persona.activo,
           },
         },
       ],

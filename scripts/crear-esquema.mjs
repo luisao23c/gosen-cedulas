@@ -17,12 +17,17 @@ import { asegurarRolesBase } from './roles-base.mjs'
 
 const RUTA = dirname(fileURLToPath(import.meta.url))
 
+const REMOTA = process.env.DB_REMOTA === 'true'
+const SSL = process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined
+
 const CONFIG = {
   host: process.env.DB_HOST ?? '127.0.0.1',
   port: Number(process.env.DB_PUERTO ?? 3306),
-  user: process.env.DB_USUARIO_ROOT ?? 'root',
-  password: process.env.DB_CONTRASENA_ROOT ?? '',
+  // MySQL propio: root crea la base y el usuario. Base remota: la cuenta que da el proveedor.
+  user: REMOTA ? (process.env.DB_USUARIO ?? 'gosen') : (process.env.DB_USUARIO_ROOT ?? 'root'),
+  password: REMOTA ? (process.env.DB_CONTRASENA ?? '') : (process.env.DB_CONTRASENA_ROOT ?? ''),
   database: process.env.DB_NOMBRE ?? 'gosen',
+  ...(SSL ? { ssl: SSL } : {}),
 }
 
 const USUARIO_APP = process.env.DB_USUARIO ?? 'gosen'
@@ -35,30 +40,34 @@ function log(...args) {
 async function main() {
   log('conectando a', `${CONFIG.host}:${CONFIG.port}`)
 
-  // 1) Base de datos y usuario de la aplicación
-  const raiz = await mysql.createConnection({
-    host: CONFIG.host,
-    port: CONFIG.port,
-    user: CONFIG.user,
-    password: CONFIG.password,
-  })
-  await raiz.query(
-    `CREATE DATABASE IF NOT EXISTS \`${CONFIG.database}\`
-       CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`,
-  )
-  // MySQL trata `gosen@localhost` y `gosen@'%'` como cuentas DISTINTAS: hay que
-  // crear y conceder en las dos, o la app conectándose por localhost se queda
-  // sin privilegios (no puede ni crear tablas en las migraciones).
-  for (const host of ["'%'", "'localhost'"]) {
-    await raiz.query(`CREATE USER IF NOT EXISTS ?@${host} IDENTIFIED BY ?`, [
-      USUARIO_APP,
-      CLAVE_APP,
-    ])
-    await raiz.query(`GRANT ALL PRIVILEGES ON \`${CONFIG.database}\`.* TO ?@${host}`, [USUARIO_APP])
+  // 1) Base de datos y usuario de la aplicación (solo en MySQL propio).
+  // En una base GESTIONADA (Aiven, TiDB…; DB_REMOTA=true) no hay root ni se crean usuarios: la base
+  // ya existe y se conecta con la cuenta del proveedor (DB_USUARIO/DB_CONTRASENA) por TLS (DB_SSL=true).
+  if (!REMOTA) {
+    const raiz = await mysql.createConnection({
+      host: CONFIG.host,
+      port: CONFIG.port,
+      user: CONFIG.user,
+      password: CONFIG.password,
+    })
+    await raiz.query(
+      `CREATE DATABASE IF NOT EXISTS \`${CONFIG.database}\`
+         CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`,
+    )
+    // MySQL trata `gosen@localhost` y `gosen@'%'` como cuentas DISTINTAS: hay que
+    // crear y conceder en las dos, o la app conectándose por localhost se queda
+    // sin privilegios (no puede ni crear tablas en las migraciones).
+    for (const host of ["'%'", "'localhost'"]) {
+      await raiz.query(`CREATE USER IF NOT EXISTS ?@${host} IDENTIFIED BY ?`, [
+        USUARIO_APP,
+        CLAVE_APP,
+      ])
+      await raiz.query(`GRANT ALL PRIVILEGES ON \`${CONFIG.database}\`.* TO ?@${host}`, [USUARIO_APP])
+    }
+    await raiz.query('FLUSH PRIVILEGES')
+    await raiz.end()
+    log('base de datos y usuario de la aplicación listos')
   }
-  await raiz.query('FLUSH PRIVILEGES')
-  await raiz.end()
-  log('base de datos y usuario de la aplicación listos')
 
   // 2) Esquema (el archivo trae DROP + CREATE, así que reinicia todo)
   const conexion = await mysql.createConnection({ ...CONFIG, multipleStatements: true })
@@ -174,8 +183,8 @@ async function main() {
   // Préstamo abierto: la cámara salió con el encargado y está asignada al
   // servidor. `devuelto_en` queda en NULL hasta que alguien la reciba.
   await conexion.query(
-    `INSERT INTO prestamo (equipo_id, responsable_id, asignado_a_id, estado_entrega, notas)
-     VALUES (?, ?, ?, 'BUENO', 'Sale para el culto del domingo')`,
+    `INSERT INTO prestamo (equipo_id, responsable_id, asignado_a_id, recogido_en, estado_entrega, notas)
+     VALUES (?, ?, ?, NOW(), 'BUENO', 'Sale para el culto del domingo')`,
     [equipoCamara, encargadoCamarasId, servidorCamarasId],
   )
   await conexion.query(`UPDATE equipo SET estatus = 'PRESTADO' WHERE id = ?`, [equipoCamara])

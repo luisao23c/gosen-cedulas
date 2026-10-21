@@ -13,7 +13,11 @@ const configuracion = {
   password: process.env.DB_CONTRASENA ?? 'gosen_dev',
   database: process.env.DB_NOMBRE ?? 'gosen',
   waitForConnections: true,
-  connectionLimit: 10,
+  // En un servicio sin servidor (Vercel) cada instancia abre su propio pool: con una base gratis
+  // de pocas conexiones conviene bajarlo (DB_CONEXIONES=3).
+  connectionLimit: Number(process.env.DB_CONEXIONES ?? 10),
+  // Las bases gestionadas (Aiven, TiDB…) exigen TLS: DB_SSL=true lo activa.
+  ...(process.env.DB_SSL === 'true' ? { ssl: { rejectUnauthorized: false } } : {}),
   charset: 'utf8mb4_unicode_ci',
   timezone: 'Z',
 } satisfies mysql.PoolOptions

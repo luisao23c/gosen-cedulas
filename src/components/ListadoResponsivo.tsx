@@ -73,7 +73,16 @@ export interface CeldaListado {
    * Si tiene chip, se pinta como etiqueta de estado/rol.
    * «warning» sirve para estados a medias (en mantenimiento, llegó tarde…).
    */
-  chip?: { etiqueta: string; tono: 'success' | 'primary' | 'warning' | 'default' }
+  chip?: {
+    etiqueta: string
+    tono: 'success' | 'primary' | 'warning' | 'default'
+    /**
+     * Para el estado «normal» (Activa, Sin criterios): se ve en la tabla de escritorio pero
+     * se omite en la lista del teléfono, donde cada chip de más es ruido. Solo se pintan
+     * los chips que avisan de algo.
+     */
+    soloTabla?: boolean
+  }
   /** En móvil antepone la etiqueta («Ramas: Ver · Crear»): para datos ambiguos sin ella */
   conEtiqueta?: boolean
 }
@@ -204,7 +213,9 @@ function ContenidoFila({ fila }: { fila: FilaListado }) {
     .map((celda) => (celda.conEtiqueta ? `${celda.etiqueta}: ${celda.texto}` : celda.texto))
     .join(' · ')
 
-  const chips = fila.celdas.flatMap((celda) => (celda.chip ? [{ clave: celda.clave, ...celda.chip }] : []))
+  const chips = fila.celdas.flatMap((celda) =>
+    celda.chip && !celda.chip.soloTabla ? [{ clave: celda.clave, ...celda.chip }] : [],
+  )
 
   return (
     <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -514,6 +525,7 @@ export default function ListadoResponsivo({
    */
   principal?: boolean
 }) {
+  const router = useRouter()
   const [busqueda, setBusqueda] = useState('')
   const [filaAbierta, setFilaAbierta] = useState<number | null>(null)
   const entradaBusqueda = useRef<HTMLInputElement | null>(null)
@@ -679,9 +691,30 @@ export default function ListadoResponsivo({
                   </TableCell>
                 </TableRow>
               ) : null}
-              <TableRow hover>
+              <TableRow
+                hover
+                onClick={(evento) => {
+                  // Toda la fila abre el detalle (no solo el nombre), salvo que el toque fuera en un control
+                  if (fila.href && !esToqueEnControl(evento.target)) router.push(fila.href)
+                }}
+                sx={fila.href ? { cursor: 'pointer' } : undefined}
+              >
                 {fila.celdas.map((celda) => (
-                  <TableCell key={celda.clave}>
+                  <TableCell
+                    key={celda.clave}
+                    // Una línea por celda: «Sin ubicación marcada» partida en tres filas ensuciaba la tabla
+                    sx={
+                      celda.destacado
+                        ? undefined
+                        : {
+                            whiteSpace: 'nowrap',
+                            maxWidth: 280,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }
+                    }
+                    title={!celda.destacado && !celda.chip ? celda.texto : undefined}
+                  >
                     {celda.destacado ? (
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <GuiaFila fila={fila} />

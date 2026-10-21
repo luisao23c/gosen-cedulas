@@ -8,6 +8,7 @@ import { dentroDelMinisterio } from '@/lib/db/alcance'
 import {
   asignarTurnos,
   borrarLlegada,
+  cambiarFuncion,
   confirmarTurno,
   crearEvento,
   desactivarEvento,
@@ -23,6 +24,7 @@ import {
   esquemaConfirmacion,
   esquemaEvento,
   esquemaEventoEdicion,
+  esquemaFuncion,
   esquemaLlegada,
   primerError,
 } from '@/lib/validaciones'
@@ -163,7 +165,11 @@ export async function asignarServidores(
     .map((valor) => Number(valor))
     .filter((valor) => Number.isInteger(valor) && valor > 0)
 
-  const datos = esquemaAsignacion.safeParse({ eventoId, usuarios })
+  const datos = esquemaAsignacion.safeParse({
+    eventoId,
+    usuarios,
+    funcion: formData.get('funcion'),
+  })
   if (!datos.success) return { ok: false, error: primerError(datos) ?? 'Revisa los datos.' }
 
   const evento = await eventoDeRegistro(eventoId)
@@ -185,8 +191,36 @@ export async function asignarServidores(
     return { ok: false, error: 'Elige al menos una cuenta.' }
   }
 
-  await asignarTurnos(eventoId, validos)
+  await asignarTurnos(eventoId, validos, datos.data.funcion)
   refrescarEvento(eventoId)
+  return { ok: true }
+}
+
+/** Cambia el rol que cumple un servidor en este evento. */
+export async function asignarFuncion(
+  _estado: EstadoFormulario,
+  formData: FormData,
+): Promise<EstadoFormulario> {
+  const datos = esquemaFuncion.safeParse({
+    eventoId: formData.get('eventoId'),
+    usuarioId: formData.get('usuarioId'),
+    funcion: formData.get('funcion'),
+  })
+  if (!datos.success) return { ok: false, error: primerError(datos) ?? 'Revisa los datos.' }
+
+  const evento = await eventoDeRegistro(datos.data.eventoId)
+  if (!evento) return { ok: false, error: 'El evento ya no existe.' }
+
+  const permiso = await exigirPermisoAccion('asignar', 'evento', {
+    ministerioId: evento.ministerioId,
+  })
+  if ('error' in permiso) return { ok: false, error: permiso.error }
+
+  const filas = await cambiarFuncion(datos.data.eventoId, datos.data.usuarioId, datos.data.funcion)
+  if (filas === 0 && !(await turnoDe(datos.data.eventoId, datos.data.usuarioId))) {
+    return { ok: false, error: 'Esa persona no está en la lista del evento.' }
+  }
+  refrescarEvento(datos.data.eventoId)
   return { ok: true }
 }
 

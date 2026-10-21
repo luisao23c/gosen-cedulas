@@ -9,6 +9,7 @@ import {
   Divider,
   FormControlLabel,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material'
 import GroupAddIcon from '@mui/icons-material/GroupAdd'
@@ -96,6 +97,13 @@ export default function AsignarServidores({
       >
         <Stack spacing={1.5} sx={{ mt: 1 }}>
           <input type="hidden" name="eventoId" value={eventoId} />
+          <TextField
+            name="funcion"
+            label="Rol en este evento (opcional)"
+            placeholder="Cámara 1, Audio, Voz principal, Recepción…"
+            helperText="Se aplica a todas las cuentas que elijas; puedes cambiarlo por persona después."
+            slotProps={{ htmlInput: { maxLength: 80 } }}
+          />
           {/* Las cuentas elegidas viajan como varios campos «usuario» */}
           {Array.from(elegidos).map((id) => (
             <input key={id} type="hidden" name="usuario" value={id} />

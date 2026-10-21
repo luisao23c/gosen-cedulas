@@ -13,7 +13,7 @@ export const SECCIONES_MINISTERIO = [
   { etiqueta: 'Equipos', ruta: '/panel/ministerio/equipos' },
   { etiqueta: 'Préstamos', ruta: '/panel/ministerio/prestamos' },
   { etiqueta: 'Eventos', ruta: '/panel/ministerio/eventos' },
-  { etiqueta: 'Mis turnos', ruta: '/panel/ministerio/mis-turnos' },
+  { etiqueta: 'Mi servicio', ruta: '/panel/ministerio/mis-turnos' },
 ] as const
 
 /** ¿La ruta actual es esta sección (o una pantalla dentro de ella)? */
@@ -39,4 +39,19 @@ export function seccionesVisibles(
   if (tiene('evento', 'ver')) rutas.push('/panel/ministerio/eventos')
   if (tieneTurnos) rutas.push('/panel/ministerio/mis-turnos')
   return rutas
+}
+
+/**
+ * Ministerio elegido en el filtro (`?ministerio=ID`). Cualquier valor que no sea
+ * un id positivo se ignora: el parámetro viene de la URL y solo ACOTA lo que la
+ * cuenta ya puede ver (el alcance sigue yendo dentro del SQL).
+ */
+export function leerFiltroMinisterio(valor: string | undefined): number | null {
+  const numero = Number(valor)
+  return Number.isInteger(numero) && numero > 0 ? numero : null
+}
+
+/** Ruta de una sección conservando el ministerio elegido en el filtro. */
+export function rutaConMinisterio(ruta: string, ministerioId: number | null | undefined): string {
+  return ministerioId ? `${ruta}?ministerio=${ministerioId}` : ruta
 }

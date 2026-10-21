@@ -170,7 +170,11 @@ CREATE TABLE IF NOT EXISTS prestamo (
   equipo_id         INT UNSIGNED NOT NULL,
   responsable_id    INT UNSIGNED NOT NULL,
   asignado_a_id     INT UNSIGNED NULL,
+  evento_id         INT UNSIGNED NULL,   -- evento para el que sale el equipo (opcional)
   prestado_en       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  recogido_en       DATETIME     NULL,   -- cuándo confirmó quien lo lleva que ya lo tiene (NULL = por recoger)
+  devolucion_avisada_en DATETIME NULL,   -- cuándo dijo quien lo trae que ya lo devolvió (falta que lo reciban)
+  estado_devolucion_avisado ENUM('BUENO','CON_DETALLE','DANADO') NULL, -- cómo dice que lo devuelve
   devuelto_en       DATETIME     NULL,
   estado_entrega    ENUM('BUENO','CON_DETALLE','DANADO') NOT NULL DEFAULT 'BUENO',
   estado_devolucion ENUM('BUENO','CON_DETALLE','DANADO') NULL,
@@ -218,6 +222,7 @@ CREATE TABLE IF NOT EXISTS servidor_evento (
   id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
   evento_id         INT UNSIGNED NOT NULL,
   usuario_id        INT UNSIGNED NOT NULL,
+  funcion           VARCHAR(80)  NULL,     -- rol en ESTE evento («Cámara 1», «Switcher»…)
   confirmado        TINYINT(1)   NOT NULL DEFAULT 0,
   confirmado_en     DATETIME     NULL,
   llego_en          DATETIME     NULL,
@@ -457,6 +462,10 @@ ALTER TABLE evento
   ADD CONSTRAINT fk_evento_ministerio FOREIGN KEY (ministerio_id) REFERENCES ministerio (id)
     ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT fk_evento_creador FOREIGN KEY (creado_por_id) REFERENCES usuario (id)
+    ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE prestamo
+  ADD CONSTRAINT fk_prestamo_evento FOREIGN KEY (evento_id) REFERENCES evento (id)
     ON DELETE SET NULL ON UPDATE CASCADE;
 
 ALTER TABLE servidor_evento

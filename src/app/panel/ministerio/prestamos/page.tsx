@@ -3,19 +3,22 @@ import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
 import { exigirRol } from '@/lib/auth/guardas'
 import { puede, rolPuede } from '@/lib/auth/permisos'
 import { listarEquipos } from '@/lib/db/equipos'
-import { listarMinisterios } from '@/lib/db/ministerios'
-import { listarPrestamos } from '@/lib/db/prestamos'
-import { listarAsignables, listarMisTurnos } from '@/lib/db/eventos'
-import { formatearFecha } from '@/lib/fechas'
+import { listarMiembros, listarMinisterios } from '@/lib/db/ministerios'
+import { listarPrestamos, tieneEquipoACargo } from '@/lib/db/prestamos'
+import { listarEventos, listarMisTurnos } from '@/lib/db/eventos'
+import { formatearFecha, hoyISO } from '@/lib/fechas'
 import { horaDeInstante } from '@/lib/servicio'
 import { ETIQUETAS_CONSERVACION } from '@/types/domain'
 import { inicialesDe } from '@/lib/nombres'
 import AccionBaja from '@/components/AccionBaja'
 import AccionDevolucion from '@/components/AccionDevolucion'
+import AccionRecogida from '@/components/AccionRecogida'
+import { chipDeFase, fasePrestamo } from '@/lib/prestamo'
 import EncabezadoPagina from '@/components/EncabezadoPagina'
 import FormularioPrestamo from '@/components/FormularioPrestamo'
 import NavegacionMinisterio from '@/components/NavegacionMinisterio'
-import { seccionesVisibles } from '@/lib/ministerio'
+import FiltroMinisterio from '@/components/FiltroMinisterio'
+import { leerFiltroMinisterio, seccionesVisibles } from '@/lib/ministerio'
 import ListadoResponsivo, { type FilaListado } from '@/components/ListadoResponsivo'
 import { borrarPrestamo } from '@/features/ministerio/acciones'
 
@@ -29,37 +32,55 @@ export const metadata = { title: 'Préstamos · Gosen' }
  * Los préstamos abiertos van primero: son los que piden acción. El historial
  * se queda abajo, buscable con el mismo buscador.
  */
-export default async function PaginaPrestamos() {
+export default async function PaginaPrestamos({
+  searchParams,
+}: {
+  searchParams: Promise<{ ministerio?: string }>
+}) {
   const usuario = await exigirRol('ver', 'prestamo')
+  const tieneEquipo = await tieneEquipoACargo(usuario.id)
+  const filtroMinisterio = leerFiltroMinisterio((await searchParams).ministerio)
 
-  const [prestamos, equipos, ministerios, misTurnos] = await Promise.all([
+  const puedeVerEventos = rolPuede(usuario, 'ver', 'evento')
+  const [todosLosPrestamos, todosLosEquipos, ministerios, misTurnos, eventosProximos] = await Promise.all([
     listarPrestamos(usuario, { soloAbiertos: false }),
     listarEquipos(usuario),
     listarMinisterios(usuario),
     listarMisTurnos(usuario.id),
+    puedeVerEventos ? listarEventos(usuario, { desde: hoyISO() }) : Promise.resolve([]),
   ])
+
+  // El filtro solo acota lo que el alcance ya dejó ver
+  const prestamos = filtroMinisterio
+    ? todosLosPrestamos.filter((prestamo) => prestamo.ministerioId === filtroMinisterio)
+    : todosLosPrestamos
+  const equipos = filtroMinisterio
+    ? todosLosEquipos.filter((equipo) => equipo.ministerioId === filtroMinisterio)
+    : todosLosEquipos
+  const variosMinisterios = ministerios.length > 1
 
   const ministeriosPermitidos = ministerios.filter((ministerio) =>
     puede(usuario, 'crear', 'prestamo', { ministerioId: ministerio.id }),
   )
-  const cuentas = await Promise.all(
-    ministeriosPermitidos.map((ministerio) => listarAsignables(ministerio.id)),
-  ).then((listas) => {
-    const porId = new Map(listas.flat().map((cuenta) => [cuenta.id, cuenta]))
-    return Array.from(porId.values())
-  })
+  // Solo integrantes del ministerio: el equipo es suyo y solo lo lleva alguien del equipo
+  const cuentas = (
+    await Promise.all(ministeriosPermitidos.map((ministerio) => listarMiembros(ministerio.id)))
+  ).flat()
+  const idsQuePrestan = new Set(ministeriosPermitidos.map((ministerio) => ministerio.id))
 
   // Se puede prestar lo que está en el inventario (no lo prestado ni la baja)
   const equiposPrestables = equipos
-    .filter((equipo) => !equipo.prestado && equipo.estatus !== 'BAJA' && equipo.estatus !== 'MANTENIMIENTO')
+    .filter((equipo) => idsQuePrestan.has(equipo.ministerioId) && !equipo.prestado && equipo.estatus !== 'BAJA' && equipo.estatus !== 'MANTENIMIENTO')
     .map((equipo) => ({
       id: equipo.id,
       nombre: equipo.nombre,
       ministerio: equipo.nombreMinisterio,
+      ministerioId: equipo.ministerioId,
     }))
 
   const filas: FilaListado[] = prestamos.map((prestamo) => {
     const abierto = prestamo.devueltoEn == null
+    const fase = fasePrestamo(prestamo)
     // Lo que se ve en la fila: cómo salió y cómo volvió. Sin devolución anotada
     // no se inventa nada: solo «Devuelto».
     const recibido = prestamo.estadoDevolucion
@@ -79,14 +100,18 @@ export default async function PaginaPrestamos() {
           destacado: true,
         },
         {
-          clave: 'trae',
-          etiqueta: 'Lo trae',
-          texto: prestamo.nombreResponsable ?? '—',
+          clave: 'evento',
+          etiqueta: 'Evento',
+          texto: prestamo.nombreEvento ?? 'Sin evento',
         },
+        ...(variosMinisterios
+          ? [{ clave: 'ministerio', etiqueta: 'Ministerio', texto: prestamo.nombreMinisterio ?? '—' }]
+          : []),
         {
-          clave: 'asignado',
-          etiqueta: 'Asignado a',
-          texto: prestamo.nombreAsignado ?? 'Sin asignar',
+          clave: 'lleva',
+          etiqueta: 'Lo lleva',
+          // Quien lo recibe es quien responde por él (préstamos viejos pueden traer dos nombres)
+          texto: prestamo.nombreAsignado ?? prestamo.nombreResponsable ?? '—',
         },
         {
           clave: 'salida',
@@ -105,35 +130,33 @@ export default async function PaginaPrestamos() {
         {
           clave: 'estado',
           etiqueta: 'Estado',
-          texto: abierto
-            ? `Prestado · salió ${ETIQUETAS_CONSERVACION[prestamo.estadoEntrega].toLowerCase()}`
-            : recibido
-              ? `Devuelto · recibido ${ETIQUETAS_CONSERVACION[recibido].toLowerCase()}`
-              : 'Devuelto',
+          texto:
+            fase === 'POR_RECOGER'
+              ? 'Por recoger: todavía no confirma que se lo llevó'
+              : fase === 'POR_REVISAR'
+                ? `Dice que lo devolvió ${prestamo.estadoDevolucionAvisado ? ETIQUETAS_CONSERVACION[prestamo.estadoDevolucionAvisado].toLowerCase() : ''}: falta recibirlo`
+                : abierto
+                  ? `Prestado · salió ${ETIQUETAS_CONSERVACION[prestamo.estadoEntrega].toLowerCase()}`
+                  : recibido
+                    ? `Devuelto · recibido ${ETIQUETAS_CONSERVACION[recibido].toLowerCase()}`
+                    : 'Devuelto',
           // El chip es lo único del estado que se ve en la lista del teléfono, así
-          // que lleva el cómo volvió: «Devuelto · con algún detalle» avisa sin abrir nada.
-          chip: {
-            etiqueta: abierto
-              ? 'Prestado'
-              : recibido
-                ? `Devuelto · ${ETIQUETAS_CONSERVACION[recibido].toLowerCase()}`
-                : 'Devuelto',
-            tono: abierto
-              ? 'primary'
-              : recibido && recibido !== 'BUENO'
-                ? 'warning'
-                : 'success',
-          },
+          // que lleva la fase (por recoger, prestado, por revisar, devuelto y cómo volvió).
+          chip: chipDeFase(fase, recibido),
         },
         { clave: 'notas', etiqueta: 'Notas', texto: prestamo.notas ?? '—' },
       ],
       acciones: (
         <>
-          {abierto && editable ? (
+          {fase === 'POR_RECOGER' && editable ? (
+            <AccionRecogida prestamoId={prestamo.id} equipo={prestamo.nombreEquipo ?? null} />
+          ) : null}
+          {(fase === 'PRESTADO' || fase === 'POR_REVISAR') && editable ? (
             <AccionDevolucion
               prestamoId={prestamo.id}
               equipo={prestamo.nombreEquipo ?? null}
               responsable={prestamo.nombreResponsable ?? null}
+              estadoAvisado={prestamo.estadoDevolucionAvisado}
             />
           ) : null}
           {abierto && puede(usuario, 'eliminar', 'prestamo', { ministerioId: prestamo.ministerioId }) ? (
@@ -163,26 +186,41 @@ export default async function PaginaPrestamos() {
       <NavegacionMinisterio
         secciones={seccionesVisibles(
           (recurso, accion) => rolPuede(usuario, accion, recurso),
-          misTurnos.length > 0,
+          misTurnos.length > 0 || tieneEquipo,
         )}
+        ministerioId={filtroMinisterio}
+      />
+
+      <FiltroMinisterio
+        ministerios={ministerios.map((ministerio) => ({ id: ministerio.id, nombre: ministerio.nombre }))}
+        actual={filtroMinisterio}
       />
 
       {ministeriosPermitidos.length > 0 ? (
         <FormularioPrestamo
           equipos={equiposPrestables}
-          cuentas={cuentas.map((cuenta) => ({
-            id: cuenta.id,
-            nombre: cuenta.nombre,
-            email: cuenta.email,
-            rolNombre: cuenta.rolNombre,
-            alcance: cuenta.alcance,
+          eventos={eventosProximos.map((evento) => ({
+            id: evento.id,
+            nombre: evento.nombre,
+            fecha: evento.fecha,
+            ministerioId: evento.ministerioId,
           }))}
+          cuentas={cuentas}
         />
       ) : null}
 
       <ListadoResponsivo
         filas={filas}
-        etiquetas={['Equipo', 'Lo trae', 'Asignado a', 'Salió', 'Volvió', 'Estado', 'Notas']}
+        etiquetas={[
+          'Equipo',
+          'Evento',
+          ...(variosMinisterios ? ['Ministerio'] : []),
+          'Lo lleva',
+          'Salió',
+          'Volvió',
+          'Estado',
+          'Notas',
+        ]}
         placeholderBuscador="Buscar por equipo, persona o nota…"
         accionesCabecera={puede(usuario, 'editar', 'prestamo')}
         mensajeVacio="No hay préstamos registrados. Usa «Nuevo préstamo» para que un equipo salga con alguien."

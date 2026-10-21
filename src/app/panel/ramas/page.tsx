@@ -41,7 +41,11 @@ export default async function PaginaRamas() {
         clave: 'estado',
         etiqueta: 'Estado',
         texto: rama.activa ? 'Activa' : 'Inactiva',
-        chip: { etiqueta: rama.activa ? 'Activa' : 'Inactiva', tono: rama.activa ? 'success' : 'default' },
+        chip: {
+          etiqueta: rama.activa ? 'Activa' : 'Inactiva',
+          tono: rama.activa ? 'success' : 'default',
+          soloTabla: rama.activa,
+        },
       },
     ],
     acciones: (
