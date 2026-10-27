@@ -1,6 +1,6 @@
 import { Button, Stack, Typography } from '@mui/material'
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
-import GroupIcon from '@mui/icons-material/Group'
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettingsOutlined'
+import GroupIcon from '@mui/icons-material/GroupOutlined'
 import { exigirRol } from '@/lib/auth/guardas'
 import { puede, puedeOtorgar, rolPuede } from '@/lib/auth/permisos'
 import { listarUsuarios } from '@/lib/db/usuarios'

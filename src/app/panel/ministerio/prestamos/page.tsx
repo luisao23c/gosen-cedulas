@@ -1,5 +1,5 @@
 import { Stack } from '@mui/material'
-import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
+import SwapHorizIcon from '@mui/icons-material/SwapHorizOutlined'
 import { exigirRol } from '@/lib/auth/guardas'
 import { puede, rolPuede } from '@/lib/auth/permisos'
 import { listarEquipos } from '@/lib/db/equipos'
@@ -102,7 +102,7 @@ export default async function PaginaPrestamos({
         {
           clave: 'evento',
           etiqueta: 'Evento',
-          texto: prestamo.nombreEvento ?? 'Sin evento',
+          texto: prestamo.nombreEvento ?? '—',
         },
         ...(variosMinisterios
           ? [{ clave: 'ministerio', etiqueta: 'Ministerio', texto: prestamo.nombreMinisterio ?? '—' }]
@@ -124,7 +124,7 @@ export default async function PaginaPrestamos({
           etiqueta: 'Volvió',
           texto: prestamo.devueltoEn
             ? `${formatearFecha(prestamo.devueltoEn)} · ${horaDeInstante(prestamo.devueltoEn) ?? ''}`
-            : 'Todavía no',
+            : '—',
           conEtiqueta: true,
         },
         {
@@ -146,6 +146,19 @@ export default async function PaginaPrestamos({
         },
         { clave: 'notas', etiqueta: 'Notas', texto: prestamo.notas ?? '—' },
       ],
+      // Lo que toca hacer con este préstamo, a la vista (sin deslizar la fila en el teléfono)
+      accionVisible:
+        fase === 'POR_RECOGER' && editable ? (
+          <AccionRecogida compacto prestamoId={prestamo.id} equipo={prestamo.nombreEquipo ?? null} />
+        ) : (fase === 'PRESTADO' || fase === 'POR_REVISAR') && editable ? (
+          <AccionDevolucion
+            comoBoton
+            prestamoId={prestamo.id}
+            equipo={prestamo.nombreEquipo ?? null}
+            responsable={prestamo.nombreResponsable ?? null}
+            estadoAvisado={prestamo.estadoDevolucionAvisado}
+          />
+        ) : undefined,
       acciones: (
         <>
           {fase === 'POR_RECOGER' && editable ? (
@@ -210,6 +223,7 @@ export default async function PaginaPrestamos({
       ) : null}
 
       <ListadoResponsivo
+        filtros={[{ clave: 'estado', etiqueta: 'Estado' }]}
         filas={filas}
         etiquetas={[
           'Equipo',

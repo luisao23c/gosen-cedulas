@@ -3,8 +3,8 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button, IconButton, Tooltip, Typography } from '@mui/material'
-import EditIcon from '@mui/icons-material/Edit'
-import PersonAddIcon from '@mui/icons-material/PersonAdd'
+import EditIcon from '@mui/icons-material/EditOutlined'
+import PersonAddIcon from '@mui/icons-material/PersonAddOutlined'
 import {
   darDeBajaIntegranteAccion,
   editarIntegrante,
@@ -29,10 +29,13 @@ export default function FormularioIntegrante({
   accion,
   celulaId,
   inicial,
+  comoBoton = false,
 }: {
   accion: 'crear' | 'editar'
   celulaId: number
   inicial?: IntegranteInicial
+  /** Botón con texto «Editar» (dentro de la fila del teléfono) en vez del icono */
+  comoBoton?: boolean
 }) {
   const esEdicion = accion === 'editar'
   const router = useRouter()
@@ -94,7 +97,11 @@ export default function FormularioIntegrante({
 
   return (
     <>
-      {esEdicion ? (
+      {esEdicion && comoBoton ? (
+        <Button size="small" startIcon={<EditIcon />} onClick={alAbrir}>
+          Editar
+        </Button>
+      ) : esEdicion ? (
         <Tooltip title="Editar integrante">
           <IconButton color="primary" onClick={alAbrir} aria-label="Editar integrante">
             <EditIcon fontSize="small" />
@@ -105,6 +112,7 @@ export default function FormularioIntegrante({
       )}
 
       <DialogoFormulario
+        completa
         abierto={abierto}
         titulo={esEdicion ? 'Editar integrante' : 'Nuevo integrante'}
         alCerrar={cerrar}

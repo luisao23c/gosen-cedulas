@@ -1,5 +1,5 @@
 import { Stack, Typography } from '@mui/material'
-import AccountTreeIcon from '@mui/icons-material/AccountTree'
+import AccountTreeIcon from '@mui/icons-material/AccountTreeOutlined'
 import { exigirRol } from '@/lib/auth/guardas'
 import { puede, rolPuede } from '@/lib/auth/permisos'
 import { listarRamas } from '@/lib/db/ramas'

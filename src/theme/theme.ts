@@ -1,4 +1,4 @@
-import { createTheme, type Shadows } from '@mui/material/styles'
+import { createTheme, responsiveFontSizes, type Shadows, type Theme } from '@mui/material/styles'
 
 /**
  * ★ ÚNICA FUENTE DE VERDAD DEL DISEÑO ★
@@ -192,7 +192,15 @@ function tamano(rem: number): string {
    Cambiar la paleta = cambiar estos valores.
    ───────────────────────────────────────────────────────────── */
 
-export const colores = {
+/**
+ * Hay DOS juegos de valores —claro y oscuro— con exactamente las mismas claves. En los componentes
+ * NO se usan directamente: se usa `colores` (más abajo), que son referencias a variables CSS
+ * (`var(--g-fondo)`…) que el navegador resuelve según el modo activo. Así el cambio de modo no
+ * necesita volver a pintar nada con JavaScript y no hay parpadeo al cargar.
+ */
+const textoClaro = ajustes.colorTexto ?? oscurecer(ajustes.colorPrincipal, 0.82)
+
+const VALORES_CLAROS = {
   /** Color principal: acciones, barra superior, estados activos */
   primario: ajustes.colorPrincipal,
   /** Tono profundo del principal: final de los degradados de marca */
@@ -201,29 +209,40 @@ export const colores = {
   primarioSuave: aclarar(ajustes.colorPrincipal, 0.9),
   /** Color secundario: acentos, chips, énfasis */
   secundario: ajustes.colorAcento,
-  /** Fondo general de la aplicación */
-  fondo: ajustes.colorFondo,
+  /**
+   * Lienzo de la aplicación: el color de fondo de la marca aclarado. Las tarjetas (blancas) se
+   * separan de él por contraste, no por bordes pesados ni sombras: así se lee limpio.
+   */
+  fondo: aclarar(ajustes.colorFondo, 0.6),
   /** Fondo de tarjetas, paneles y diálogos (paper) */
   superficie: aclarar(ajustes.colorFondo, 1),
-  /** Superficie apenas teñida: barras, cabeceras de tabla, menú lateral */
-  superficieAlt: mezclar(ajustes.colorPrincipal, aclarar(ajustes.colorFondo, 1), 0.97),
+  /** Superficie apenas teñida con el color de fondo de la marca: cabeceras de tabla, paneles, fondos de selección */
+  superficieAlt: aclarar(ajustes.colorFondo, 0.35),
+  /** Un escalón más marcado: chips neutros, barras de progreso, huecos */
+  superficieMedia: ajustes.colorFondo,
   /** Color del texto principal */
   texto: ajustes.colorTexto ?? oscurecer(ajustes.colorPrincipal, 0.82),
   /** Texto secundario: descripciones, etiquetas de apoyo */
   textoSuave: mezclar(
     ajustes.colorTextoSuave ?? ajustes.colorTexto ?? oscurecer(ajustes.colorPrincipal, 0.82),
     aclarar(ajustes.colorFondo, 1),
-    0.3,
+    0.18, // más claro que `texto`, pero sin bajar de 4.5:1 ni sobre el lienzo ni sobre los chips neutros
   ),
-  /** Texto sobre fondos de color */
+  /** Texto sobre botones y selecciones del color principal */
   textoInvertido: aclarar(ajustes.colorFondo, 1),
+  /** Texto sobre el degradado de marca (portada del inicio, login, turno): claro en los dos modos */
+  textoSobreMarca: aclarar(ajustes.colorFondo, 1),
+  /** Texto sobre el color de acento */
+  textoSobreAcento: textoClaro,
   /** Estados de la interfaz: no cambian con la marca, significan lo mismo siempre */
   exito: '#1E7A3E',
-  advertencia: '#C07600',
+  // Ámbar profundo: el ámbar claro (#C07600) no llegaba a 4.5:1 como texto de chip
+  advertencia: '#8F5500',
   error: '#B3261E',
   /** Líneas y bordes */
-  borde: aclarar(ajustes.colorPrincipal, 0.88),
-  bordeFuerte: aclarar(ajustes.colorPrincipal, 0.8),
+  // Neutros cálidos sacados del fondo de la marca (no del color de marca: evita bordes rosados)
+  borde: mezclar(ajustes.colorFondo, ajustes.colorTexto ?? '#232323', 0.07),
+  bordeFuerte: mezclar(ajustes.colorFondo, ajustes.colorTexto ?? '#232323', 0.2),
   /** Estados deshabilitados */
   deshabilitado: aclarar(ajustes.colorPrincipal, 0.65),
   /** Velo claro sobre superficies de marca (insignias y chips del inicio) */
@@ -233,9 +252,118 @@ export const colores = {
   /** Tinte de chip de éxito, para los avatares/insignias de estado */
   tintes: {
     exito: alfa('#1E7A3E', 0.12),
-    advertencia: alfa('#C07600', 0.14),
+    advertencia: alfa('#8F5500', 0.16),
+    error: alfa('#B3261E', 0.1),
   },
+  /** Respuesta al pasar el cursor por encima (botones de contorno, filas, acciones de MUI) */
+  hover: alfa(textoClaro, 0.04),
+  hoverFila: alfa(textoClaro, 0.03),
+  /** Elemento seleccionado y foco de teclado */
+  seleccion: alfa(ajustes.colorPrincipal, 0.08),
+  foco: alfa(ajustes.colorPrincipal, 0.12),
+  /** Esqueletos de carga */
+  esqueleto: alfa(ajustes.colorPrincipal, 0.07),
+  /** Velo detrás de los diálogos */
+  velo: alfa(oscurecer(ajustes.colorPrincipal, 0.75), 0.42),
+  /** Globo de ayuda (tooltip): fondo y texto */
+  globo: textoClaro,
+  textoGlobo: aclarar(ajustes.colorFondo, 1),
+  /**
+   * Logo: dos versiones (tinta oscura para fondos claros y tinta clara para fondos oscuros). Estos
+   * valores son el `display` de cada una: el CSS elige cuál se ve según el modo, sin esperar a JavaScript.
+   */
+  logoTintaOscura: 'block',
+  logoTintaClara: 'none',
 }
+
+type Valores = typeof VALORES_CLAROS
+
+/**
+ * Modo oscuro. Sale de la misma paleta: el texto de la marca (Tierra Viva) hace de fondo, el fondo de
+ * la marca (Luz Serna) hace de texto y el color de marca se aclara para que siga leyéndose sobre oscuro.
+ */
+const fondoOscuro = mezclar(textoClaro, '#0A0F0C', 0.3)
+const superficieOscura = mezclar(fondoOscuro, '#FFFFFF', 0.06)
+const textoOscuro = aclarar(ajustes.colorFondo, 0.45)
+const primarioClaro = aclarar(ajustes.colorPrincipal, 0.5)
+const exitoOscuro = '#5CC17F'
+const advertenciaOscura = '#F0B34A'
+const errorOscuro = '#F5958E'
+
+const VALORES_OSCUROS: Valores = {
+  primario: primarioClaro,
+  /** En oscuro es un tono MÁS claro: texto sobre los chips y fondos suaves de marca */
+  primarioOscuro: aclarar(ajustes.colorPrincipal, 0.62),
+  primarioSuave: mezclar(superficieOscura, primarioClaro, 0.22),
+  secundario: ajustes.colorAcento,
+  fondo: fondoOscuro,
+  superficie: superficieOscura,
+  superficieAlt: mezclar(fondoOscuro, '#FFFFFF', 0.09),
+  superficieMedia: mezclar(fondoOscuro, '#FFFFFF', 0.14),
+  texto: textoOscuro,
+  textoSuave: mezclar(textoOscuro, superficieOscura, 0.28),
+  textoInvertido: fondoOscuro,
+  textoSobreMarca: aclarar(ajustes.colorFondo, 1),
+  textoSobreAcento: fondoOscuro,
+  exito: exitoOscuro,
+  advertencia: advertenciaOscura,
+  error: errorOscuro,
+  borde: mezclar(superficieOscura, textoOscuro, 0.1),
+  bordeFuerte: mezclar(superficieOscura, textoOscuro, 0.26),
+  deshabilitado: mezclar(superficieOscura, textoOscuro, 0.32),
+  veloMarca: alfa(aclarar(ajustes.colorFondo, 1), 0.18),
+  veloMarcaBorde: alfa(aclarar(ajustes.colorFondo, 1), 0.28),
+  tintes: {
+    exito: alfa(exitoOscuro, 0.16),
+    advertencia: alfa(advertenciaOscura, 0.16),
+    error: alfa(errorOscuro, 0.16),
+  },
+  hover: alfa(textoOscuro, 0.06),
+  hoverFila: alfa(textoOscuro, 0.05),
+  seleccion: alfa(primarioClaro, 0.14),
+  foco: alfa(primarioClaro, 0.22),
+  esqueleto: alfa(textoOscuro, 0.08),
+  velo: alfa('#000000', 0.6),
+  globo: mezclar(superficieOscura, '#FFFFFF', 0.22),
+  textoGlobo: textoOscuro,
+  logoTintaOscura: 'none',
+  logoTintaClara: 'block',
+}
+
+/** Valores REALES (hex) de cada modo: para lo que no entiende `var()` (manifest, barra del navegador, MUI). */
+export const paletaReal = { claro: VALORES_CLAROS, oscuro: VALORES_OSCUROS } as const
+
+type Referencias<T> = { [K in keyof T]: T[K] extends string ? string : Referencias<T[K]> }
+
+/** `{ fondo: '#…' }` → `{ fondo: 'var(--g-fondo)' }` (y lo mismo en los grupos anidados: `tintes.exito`). */
+function referencias<T extends object>(valores: T, prefijo = '--g'): Referencias<T> {
+  return Object.fromEntries(
+    Object.entries(valores).map(([clave, valor]) => [
+      clave,
+      typeof valor === 'string' ? `var(${prefijo}-${clave})` : referencias(valor as object, `${prefijo}-${clave}`),
+    ]),
+  ) as Referencias<T>
+}
+
+/** `{ fondo: '#…' }` → `{ '--g-fondo': '#…' }`: las declaraciones de variables CSS de un modo. */
+function variablesCss(valores: object, prefijo = '--g'): Record<string, string> {
+  return Object.assign(
+    {},
+    ...Object.entries(valores).map(([clave, valor]) =>
+      typeof valor === 'string'
+        ? { [`${prefijo}-${clave}`]: valor }
+        : variablesCss(valor as object, `${prefijo}-${clave}`),
+    ),
+  )
+}
+
+/**
+ * ★ Los colores que se usan en componentes ★ — son referencias a variables CSS, no hex: cambian solos
+ * con el modo claro/oscuro. Se pueden escribir dentro de cualquier valor de CSS
+ * (`border: \`1px solid ${colores.borde}\``). No sirven para operar con ellos en JavaScript
+ * (mezclar, aclarar…): para eso están los valores reales en `paletaReal`.
+ */
+export const colores = referencias(VALORES_CLAROS)
 
 /* ─────────────────────────────────────────────────────────────
    3) RADIOS, SOMBRAS Y MOVIMIENTO
@@ -250,13 +378,13 @@ function radio(valor: number): number {
 
 export const radios = {
   /** Campos, chips e insignias */
-  chico: radio(10),
+  chico: radio(8),
   /** Botones de icono, celdas, elementos de lista */
-  medio: radio(14),
+  medio: radio(12),
   /** Tarjetas, paneles y contenedores de listado */
-  grande: radio(18),
+  grande: radio(16),
   /** Diálogos y superficies flotantes grandes */
-  extra: radio(22),
+  extra: radio(24),
   /** Píldora completa (botones, chips de filtro, barras) */
   pill: 999,
 }
@@ -304,9 +432,13 @@ export const movimiento = {
   curvaSuave: 'cubic-bezier(0.4, 0, 0.2, 1)',
 }
 
-/** Degradados de marca. Se usan en el login y en la insignia del menú. */
+/**
+ * Degradados de marca. `marca` es el color de la marca tal cual en los dos modos (es identidad: la
+ * portada del inicio, el login y el turno destacado se ven igual de noche) y se acompaña con
+ * `colores.textoSobreMarca`. `ambiente` sí sigue el modo.
+ */
 export const degradados = {
-  marca: `linear-gradient(135deg, ${colores.primario} 0%, ${colores.primarioOscuro} 100%)`,
+  marca: `linear-gradient(135deg, ${ajustes.colorPrincipal} 0%, ${oscurecer(ajustes.colorPrincipal, 0.2)} 100%)`,
   /** Velo suave para el fondo del login */
   ambiente: `radial-gradient(120% 90% at 15% 0%, ${colores.primarioSuave} 0%, ${colores.fondo} 55%)`,
 }
@@ -320,12 +452,16 @@ export const degradados = {
 export const medidas = {
   /** Ancho del menú lateral en escritorio */
   anchoMenu: 264,
+  /** Ancho del menú lateral contraído (solo iconos) */
+  anchoMenuCompacto: 72,
+  /** Separación de la barra inferior flotante respecto a los bordes de la pantalla */
+  margenNavFlotante: 12,
   /** Ancho máximo del contenido: en pantallas muy anchas el texto no se estira */
   anchoMaximoContenido: 1400,
   /** Alto de la barra de navegación inferior (móvil) */
   altoBarraInferior: 64,
   /** Alto de la barra superior (móvil / escritorio) */
-  altoBarraSuperior: { movil: 60, escritorio: 68 },
+  altoBarraSuperior: { movil: 56, escritorio: 68 },
   /** Zona táctil mínima recomendada (Material: 48 px) */
   zonaTactil: 48,
   /** Separación del botón flotante respecto al borde de la pantalla */
@@ -349,56 +485,87 @@ export const mapa = {
   zoomPunto: 16,
   /** Alto del lienzo: en móvil el formulario es una hoja a pantalla completa */
   alto: { movil: 260, escritorio: 320 },
+  /** Las teselas de OpenStreetMap son claras: en modo oscuro se invierten para no deslumbrar */
+  filtroOscuro: 'invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.92)',
+}
+
+/**
+ * Fila que se desliza de lado y llega hasta el borde de la pantalla en el teléfono (chips de filtro,
+ * pestañas en píldora) sin perder la alineación de su primer elemento con el contenido.
+ * Se usa como `sx={(tema) => ({ ...alBorde(tema), … })}`.
+ *
+ * A propósito NO son márgenes negativos (`mx: -2`): un `Stack` padre reinicia los márgenes de sus hijos
+ * y los anula, y la fila quedaba 16 px más adentro que el resto del contenido.
+ */
+export function alBorde(tema: Theme) {
+  return {
+    position: 'relative' as const,
+    left: tema.spacing(-2),
+    width: `calc(100% + ${tema.spacing(4)})`,
+    px: 2,
+    [tema.breakpoints.up('sm')]: { left: tema.spacing(-3), width: `calc(100% + ${tema.spacing(6)})`, px: 3 },
+    [tema.breakpoints.up('md')]: { left: 0, width: '100%', px: 0 },
+  }
 }
 
 /** Desplazamiento inferior de un elemento flotante en móvil: barra + zona segura del sistema. */
-export const sobreBarraInferior = `calc(${medidas.altoBarraInferior}px + env(safe-area-inset-bottom, 0px) + ${medidas.margenFab}px)`
+export const sobreBarraInferior = `calc(${medidas.altoBarraInferior}px + ${medidas.margenNavFlotante}px + env(safe-area-inset-bottom, 0px) + ${medidas.margenFab}px)`
 
 /* ─────────────────────────────────────────────────────────────
    5) TEMA MUI — de aquí en adelante no se toca nada más
    ───────────────────────────────────────────────────────────── */
 
-export const tema = createTheme({
-  palette: {
-    mode: 'light',
+/** Paleta de MUI de un modo (sus componentes internos —botones, campos, menús— leen de aquí). */
+function paletaMui(valores: Valores) {
+  return {
     primary: {
-      main: colores.primario,
-      dark: colores.primarioOscuro,
-      light: colores.primarioSuave,
-      contrastText: colores.textoInvertido,
+      main: valores.primario,
+      dark: valores.primarioOscuro,
+      light: valores.primarioSuave,
+      contrastText: valores.textoInvertido,
     },
-    secondary: {
-      main: colores.secundario,
-      contrastText: colores.texto,
-    },
-    success: { main: colores.exito },
-    warning: { main: colores.advertencia },
-    error: { main: colores.error },
-    background: { default: colores.fondo, paper: colores.superficie },
-    text: { primary: colores.texto, secondary: colores.textoSuave, disabled: colores.deshabilitado },
-    divider: colores.borde,
-    action: {
-      hover: alfa(colores.primario, 0.06),
-      selected: alfa(colores.primario, 0.1),
-      focus: alfa(colores.primario, 0.14),
-    },
+    secondary: { main: valores.secundario, contrastText: valores.textoSobreAcento },
+    success: { main: valores.exito },
+    warning: { main: valores.advertencia },
+    error: { main: valores.error },
+    background: { default: valores.fondo, paper: valores.superficie },
+    text: { primary: valores.texto, secondary: valores.textoSuave, disabled: valores.deshabilitado },
+    divider: valores.borde,
+    action: { hover: valores.hover, selected: valores.seleccion, focus: valores.foco },
+  }
+}
+
+/**
+ * Con `colorSchemeSelector: 'data'` MUI pone en <html> el atributo `data-light` o `data-dark` (lo escribe
+ * `InitColorSchemeScript` antes de pintar). Las variables propias (`colores`) se conmutan con el mismo.
+ */
+const RAIZ_OSCURA = ':root[data-dark]'
+
+const temaBase = createTheme({
+  // Variables CSS + dos esquemas: MUI cambia entre claro y oscuro con un atributo, sin repintar con JS
+  cssVariables: { colorSchemeSelector: 'data' },
+  colorSchemes: {
+    light: { palette: paletaMui(VALORES_CLAROS) },
+    dark: { palette: paletaMui(VALORES_OSCUROS) },
   },
   shadows: escalaDeSombras() as Shadows,
   typography: {
     fontFamily: `${fuentes.texto}, system-ui, sans-serif`,
-    h1: { fontFamily: fuentes.titulos, fontWeight: 700, fontSize: tamano(2.05), letterSpacing: '-0.02em', lineHeight: 1.2 },
-    h2: { fontFamily: fuentes.titulos, fontWeight: 700, fontSize: tamano(1.6), letterSpacing: '-0.02em', lineHeight: 1.25 },
-    h3: { fontFamily: fuentes.titulos, fontWeight: 650, fontSize: tamano(1.32), letterSpacing: '-0.015em' },
-    h4: { fontFamily: fuentes.titulos, fontWeight: 650, fontSize: tamano(1.16), letterSpacing: '-0.01em' },
-    h5: { fontFamily: fuentes.titulos, fontWeight: 650, fontSize: tamano(1.04), letterSpacing: '-0.01em' },
-    h6: { fontFamily: fuentes.titulos, fontWeight: 650, fontSize: tamano(0.98), letterSpacing: '-0.005em' },
-    subtitle1: { fontWeight: 600, letterSpacing: '-0.005em' },
-    subtitle2: { fontWeight: 600 },
-    body1: { fontSize: tamano(0.975), lineHeight: 1.6 },
-    body2: { fontSize: tamano(0.875), lineHeight: 1.55 },
-    caption: { fontSize: tamano(0.78), lineHeight: 1.45 },
-    overline: { fontSize: tamano(0.7), fontWeight: 700, letterSpacing: '0.09em', lineHeight: 1.6 },
-    button: { textTransform: 'none', fontWeight: 600, letterSpacing: '0.01em' },
+    // Títulos: Minion Pro (serif editorial) con peso 600 y tamaños que se REDUCEN solos en el teléfono
+    h1: { fontFamily: fuentes.titulos, fontWeight: 600, fontSize: tamano(2.5), letterSpacing: '-0.02em', lineHeight: 1.12 },
+    h2: { fontFamily: fuentes.titulos, fontWeight: 600, fontSize: tamano(2), letterSpacing: '-0.015em', lineHeight: 1.15 },
+    h3: { fontFamily: fuentes.titulos, fontWeight: 600, fontSize: tamano(1.5), letterSpacing: '-0.01em', lineHeight: 1.2 },
+    h4: { fontFamily: fuentes.titulos, fontWeight: 600, fontSize: tamano(1.25), letterSpacing: '-0.005em', lineHeight: 1.25 },
+    h5: { fontFamily: fuentes.titulos, fontWeight: 600, fontSize: tamano(1.125), lineHeight: 1.3 },
+    h6: { fontFamily: fuentes.titulos, fontWeight: 600, fontSize: tamano(1), lineHeight: 1.3 },
+    // Interfaz: Creato Display. Base de 16 px (cuerpo) y 15 px (secundario) para leerse bien en el teléfono
+    subtitle1: { fontWeight: 700, fontSize: tamano(1), lineHeight: 1.35 },
+    subtitle2: { fontWeight: 700, fontSize: tamano(0.9375), lineHeight: 1.35 },
+    body1: { fontSize: tamano(1), lineHeight: 1.55 },
+    body2: { fontSize: tamano(0.9375), lineHeight: 1.5 },
+    caption: { fontSize: tamano(0.8125), lineHeight: 1.4 },
+    overline: { fontSize: tamano(0.75), fontWeight: 700, letterSpacing: '0.06em', lineHeight: 1.5 },
+    button: { textTransform: 'none', fontWeight: 700, fontSize: tamano(0.9375), letterSpacing: 0 },
   },
   shape: { borderRadius: radios.medio },
   transitions: {
@@ -414,16 +581,24 @@ export const tema = createTheme({
     /* Base del documento: tipografía nítida, selección, barras de scroll y
        respeto por quien pide menos movimiento. */
     MuiCssBaseline: {
-      styleOverrides: (base) => ({
-        html: { WebkitTextSizeAdjust: '100%' },
+      styleOverrides: () => ({
+        // Variables de color propias (`colores`): las del modo claro en la raíz y las del oscuro encima cuando toca
+        ':root': variablesCss(VALORES_CLAROS),
+        [RAIZ_OSCURA]: variablesCss(VALORES_OSCUROS),
+        // Las teselas del mapa son claras: de noche se invierten
+        [`${RAIZ_OSCURA} .leaflet-tile-pane`]: { filter: mapa.filtroOscuro },
+        // Comportamiento de app: sin resaltado azul al tocar, sin retardo ni zoom por doble toque, y sin el
+        // «rebote» del navegador (el gesto de jalar lo gestiona la app: JalarParaActualizar)
+        html: { WebkitTextSizeAdjust: '100%', WebkitTapHighlightColor: 'transparent', overscrollBehaviorY: 'contain' },
+        'a, button, [role="button"], input, select, textarea': { touchAction: 'manipulation' },
         // Entrada de cada pantalla: fundido corto con un leve ascenso
         '@keyframes entradaPagina': {
           from: { opacity: 0, transform: 'translateY(6px)' },
           to: { opacity: 1, transform: 'none' },
         },
         body: {
-          backgroundColor: base.palette.background.default,
-          color: base.palette.text.primary,
+          backgroundColor: colores.fondo,
+          color: colores.texto,
           WebkitFontSmoothing: 'antialiased',
           MozOsxFontSmoothing: 'grayscale',
           textRendering: 'optimizeLegibility',
@@ -478,27 +653,22 @@ export const tema = createTheme({
       defaultProps: { disableElevation: true },
       styleOverrides: {
         root: {
-          paddingInline: 20,
-          minHeight: 42,
-          borderRadius: radios.pill,
-          transition: `background-color ${movimiento.rapida} ${movimiento.curva}, box-shadow ${movimiento.normal} ${movimiento.curva}, transform ${movimiento.rapida} ${movimiento.curva}`,
+          paddingInline: 18,
+          minHeight: 44,
+          borderRadius: radios.medio,
+          transition: `background-color ${movimiento.rapida} ${movimiento.curva}, border-color ${movimiento.rapida} ${movimiento.curva}, transform ${movimiento.rapida} ${movimiento.curva}`,
           '&:active': { transform: 'translateY(1px)' },
         },
-        sizeLarge: { minHeight: medidas.zonaTactil, paddingInline: 26 },
-        sizeSmall: { minHeight: 34, paddingInline: 14 },
-        contained: { boxShadow: sombras.reposo },
-        outlined: { borderColor: colores.bordeFuerte, '&:hover': { borderColor: colores.primario } },
-        text: { paddingInline: 14 },
-      },
-      variants: [
-        {
-          props: { variant: 'contained', color: 'primary' },
-          style: {
-            backgroundImage: degradados.marca,
-            '&:hover': { boxShadow: sombras.suave },
-          },
+        sizeLarge: { minHeight: 52, paddingInline: 24 },
+        sizeSmall: { minHeight: 36, paddingInline: 12, fontSize: tamano(0.875) },
+        contained: { boxShadow: 'none', '&:hover': { boxShadow: 'none' } },
+        outlined: {
+          borderColor: colores.bordeFuerte,
+          color: colores.texto,
+          '&:hover': { borderColor: colores.texto, backgroundColor: colores.hover },
         },
-      ],
+        text: { paddingInline: 12 },
+      },
     },
 
     MuiIconButton: {
@@ -517,8 +687,7 @@ export const tema = createTheme({
       styleOverrides: {
         root: {
           borderRadius: radios.pill,
-          boxShadow: sombras.alta,
-          backgroundImage: degradados.marca,
+          boxShadow: sombras.media,
           transition: `box-shadow ${movimiento.normal} ${movimiento.curva}, transform ${movimiento.rapida} ${movimiento.curva}`,
           '&:active': { transform: 'translateY(1px)' },
         },
@@ -531,7 +700,7 @@ export const tema = createTheme({
       styleOverrides: {
         root: { borderRadius: radios.grande, backgroundImage: 'none' },
         outlined: { borderColor: colores.borde },
-        elevation1: { boxShadow: sombras.reposo },
+        elevation1: { boxShadow: 'none' },
         elevation2: { boxShadow: sombras.suave },
       },
     },
@@ -542,7 +711,7 @@ export const tema = createTheme({
         root: {
           borderRadius: radios.grande,
           border: `1px solid ${colores.borde}`,
-          boxShadow: sombras.reposo,
+          boxShadow: 'none',
         },
       },
     },
@@ -552,36 +721,73 @@ export const tema = createTheme({
     MuiOutlinedInput: {
       styleOverrides: {
         root: {
-          borderRadius: radios.chico,
+          borderRadius: radios.medio,
           backgroundColor: colores.superficie,
           transition: `box-shadow ${movimiento.rapida} ${movimiento.curva}`,
           '& .MuiOutlinedInput-notchedOutline': { borderColor: colores.bordeFuerte },
-          '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: colores.deshabilitado },
-          '&.Mui-focused': { boxShadow: `0 0 0 3px ${colores.primarioSuave}` },
+          '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: colores.textoSuave },
+          // Foco: borde de marca de 2 px y ya (sin halo difuso)
           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
             borderColor: colores.primario,
-            borderWidth: 1.5,
+            borderWidth: 2,
           },
         },
-        input: { paddingTop: 12, paddingBottom: 12 },
+        input: { paddingTop: 15, paddingBottom: 15 },
         multiline: { padding: 0 },
       },
     },
-    MuiInputLabel: { styleOverrides: { root: { fontWeight: 500 } } },
+    MuiInputLabel: { styleOverrides: { root: { fontWeight: 500, color: colores.textoSuave } } },
     MuiFormHelperText: { styleOverrides: { root: { marginLeft: 2 } } },
 
     MuiChip: {
       styleOverrides: {
         root: {
           borderRadius: radios.chico,
-          fontWeight: 600,
+          fontWeight: 700,
+          fontSize: tamano(0.8125),
           height: 28,
           transition: `background-color ${movimiento.rapida} ${movimiento.curva}`,
         },
-        clickable: { minHeight: 32, height: 32, borderRadius: radios.pill },
-        sizeSmall: { height: 26 },
-        colorSuccess: { backgroundColor: alfa(colores.exito, 0.12), color: colores.exito },
-        colorPrimary: { backgroundColor: colores.primarioSuave, color: colores.primarioOscuro },
+        clickable: { minHeight: 36, height: 36, borderRadius: radios.pill, paddingInline: 4 },
+        sizeSmall: { height: 24, fontSize: tamano(0.78) },
+        outlined: { borderColor: colores.bordeFuerte },
+      },
+      // Tonales: el estado se lee por el tinte, no por un contorno
+      variants: [
+        { props: { variant: 'filled', color: 'default' }, style: { backgroundColor: colores.superficieMedia, color: colores.textoSuave } },
+        { props: { variant: 'filled', color: 'primary' }, style: { backgroundColor: colores.primarioSuave, color: colores.primarioOscuro } },
+        { props: { variant: 'filled', color: 'success' }, style: { backgroundColor: colores.tintes.exito, color: colores.exito } },
+        { props: { variant: 'filled', color: 'warning' }, style: { backgroundColor: colores.tintes.advertencia, color: colores.advertencia } },
+        { props: { variant: 'filled', color: 'error' }, style: { backgroundColor: colores.tintes.error, color: colores.error } },
+      ],
+    },
+
+    /* Control segmentado (p. ej. el selector de apariencia): pista hundida y opción activa elevada */
+    MuiToggleButtonGroup: {
+      styleOverrides: {
+        root: { backgroundColor: colores.superficieMedia, borderRadius: radios.medio, padding: 3, gap: 2 },
+        grouped: {
+          margin: 0,
+          border: 0,
+          borderRadius: radios.chico,
+          '&:not(:first-of-type), &:first-of-type, &:not(:last-of-type)': { borderRadius: radios.chico },
+        },
+      },
+    },
+    MuiToggleButton: {
+      styleOverrides: {
+        root: {
+          minHeight: 38,
+          textTransform: 'none',
+          fontWeight: 700,
+          color: colores.textoSuave,
+          '&.Mui-selected': {
+            backgroundColor: colores.superficie,
+            color: colores.texto,
+            boxShadow: sombras.reposo,
+            '&:hover': { backgroundColor: colores.superficie },
+          },
+        },
       },
     },
 
@@ -600,18 +806,20 @@ export const tema = createTheme({
       styleOverrides: {
         root: {
           borderBottom: `1px solid ${colores.borde}`,
-          paddingBlock: 12,
+          paddingBlock: 14,
           paddingInline: 16,
+          fontSize: tamano(0.9375),
         },
         head: {
           backgroundColor: colores.superficieAlt,
           color: colores.textoSuave,
-          fontSize: '0.7rem',
+          fontSize: tamano(0.8125),
           fontWeight: 700,
-          letterSpacing: '0.09em',
-          textTransform: 'uppercase',
+          letterSpacing: '0.01em',
+          textTransform: 'none',
           borderBottom: `1px solid ${colores.borde}`,
           whiteSpace: 'nowrap',
+          paddingBlock: 12,
         },
       },
     },
@@ -620,6 +828,7 @@ export const tema = createTheme({
         root: {
           transition: `background-color ${movimiento.rapida} ${movimiento.curva}`,
           '&:last-of-type td': { borderBottom: 'none' },
+          '&.MuiTableRow-hover:hover': { backgroundColor: colores.hoverFila },
         },
       },
     },
@@ -646,9 +855,10 @@ export const tema = createTheme({
       defaultProps: { elevation: 0, color: 'transparent' },
       styleOverrides: {
         root: {
-          backgroundColor: alfa(colores.superficie, 0.82),
-          backdropFilter: 'saturate(180%) blur(14px)',
+          backgroundColor: colores.superficie,
           color: colores.texto,
+          borderRadius: 0,
+          borderBottom: `1px solid ${colores.borde}`,
         },
       },
     },
@@ -656,8 +866,8 @@ export const tema = createTheme({
     MuiBottomNavigation: {
       styleOverrides: {
         root: {
-          backgroundColor: alfa(colores.superficie, 0.92),
-          backdropFilter: 'saturate(180%) blur(14px)',
+          backgroundColor: colores.superficie,
+          borderRadius: 0,
           height: 'auto',
         },
       },
@@ -668,10 +878,12 @@ export const tema = createTheme({
         root: {
           minWidth: 0,
           paddingInline: 2,
-          paddingTop: 6,
-          paddingBottom: 6,
-          '& .MuiBottomNavigationAction-label': { fontSize: '0.7rem', opacity: 0.75 },
-          '&.Mui-selected .MuiBottomNavigationAction-label': { fontSize: '0.7rem', fontWeight: 700, opacity: 1 },
+          paddingTop: 8,
+          paddingBottom: 8,
+          color: colores.textoSuave,
+          '& .MuiBottomNavigationAction-label': { fontSize: '0.75rem', fontWeight: 500 },
+          '&.Mui-selected': { color: colores.primario },
+          '&.Mui-selected .MuiBottomNavigationAction-label': { fontSize: '0.75rem', fontWeight: 700 },
         },
       },
     },
@@ -682,9 +894,9 @@ export const tema = createTheme({
         paper: { borderRadius: radios.extra, boxShadow: sombras.alta, backgroundImage: 'none' },
       },
     },
-    MuiBackdrop: { styleOverrides: { root: { backgroundColor: alfa(oscurecer(colores.primario, 0.75), 0.42) } } },
+    MuiBackdrop: { styleOverrides: { root: { backgroundColor: colores.velo } } },
     MuiDialogTitle: {
-      styleOverrides: { root: { fontSize: tamano(1.16), fontWeight: 650, paddingBottom: 4 } },
+      styleOverrides: { root: { fontSize: tamano(1.25), fontWeight: 600, paddingBottom: 4 } },
     },
     MuiDialogActions: { styleOverrides: { root: { padding: '12px 24px 20px' } } },
 
@@ -710,14 +922,15 @@ export const tema = createTheme({
       defaultProps: { arrow: true },
       styleOverrides: {
         tooltip: {
-          backgroundColor: colores.texto,
+          backgroundColor: colores.globo,
+          color: colores.textoGlobo,
           fontSize: '0.75rem',
           fontWeight: 500,
           borderRadius: radios.chico,
           paddingInline: 10,
           paddingBlock: 6,
         },
-        arrow: { color: colores.texto },
+        arrow: { color: colores.globo },
       },
     },
 
@@ -728,7 +941,7 @@ export const tema = createTheme({
       variants: [
         {
           props: { variant: 'filled', severity: 'success' },
-          style: { backgroundImage: degradados.marca },
+          style: { backgroundImage: degradados.marca, color: colores.textoSobreMarca },
         },
       ],
     },
@@ -736,7 +949,7 @@ export const tema = createTheme({
 
     MuiSkeleton: {
       defaultProps: { animation: 'wave' },
-      styleOverrides: { root: { borderRadius: radios.medio, backgroundColor: alfa(colores.primario, 0.07) } },
+      styleOverrides: { root: { borderRadius: radios.medio, backgroundColor: colores.esqueleto } },
     },
 
     MuiLinearProgress: {
@@ -772,3 +985,9 @@ export const tema = createTheme({
   },
 })
 
+
+/**
+ * Tema final. `responsiveFontSizes` reduce solos los títulos (h1–h6) en pantallas pequeñas:
+ * un título de 32 px que luce bien en escritorio ocuparía tres líneas en el teléfono.
+ */
+export const tema = responsiveFontSizes(temaBase, { breakpoints: ['sm', 'md'], factor: 2.6 })

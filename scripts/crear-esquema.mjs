@@ -6,6 +6,9 @@
  *
  * ⚠️  Borra las tablas existentes. Es una herramienta de DESARROLLO.
  * Usa la misma base de datos MySQL que la aplicación (ver .env.local).
+ *
+ * Para una base REAL (producción) define ADMIN_CONTRASENA (y opcionalmente ADMIN_EMAIL y
+ * ADMIN_NOMBRE): en lugar de los datos de prueba crea solo ese administrador. Ver DESPLIEGUE.md.
  */
 
 import { readFile } from 'node:fs/promises'
@@ -37,7 +40,15 @@ function log(...args) {
   console.log('[db:setup]', ...args)
 }
 
+/** ADMIN_CONTRASENA (instalación limpia) se valida ANTES de abrir ninguna conexión: así un error no deja el proceso colgado. */
+function validarContrasenaAdmin(clave) {
+  if (clave.length < 10 || !/\p{L}/u.test(clave) || !/\d/.test(clave)) {
+    throw new Error('ADMIN_CONTRASENA necesita al menos 10 caracteres, con letras y números.')
+  }
+}
+
 async function main() {
+  if (process.env.ADMIN_CONTRASENA) validarContrasenaAdmin(process.env.ADMIN_CONTRASENA)
   log('conectando a', `${CONFIG.host}:${CONFIG.port}`)
 
   // 1) Base de datos y usuario de la aplicación (solo en MySQL propio).
@@ -90,7 +101,24 @@ async function main() {
   const rolServidorMinisterio = roles.get('Servidor de ministerio')
   log('roles base creados:', [...roles.keys()].join(', '))
 
-  // 3) Datos de prueba — reutiliza el hasheador de la aplicación
+  // 3a) Instalación limpia (producción): solo el administrador, con la contraseña que tú elijas.
+  // Los datos de prueba de abajo crean cuentas con contraseñas CONOCIDAS (están en este archivo y en
+  // el repositorio): en una base pública cualquiera podría entrar con ellas.
+  if (process.env.ADMIN_CONTRASENA) {
+    const clave = process.env.ADMIN_CONTRASENA
+    const correo = (process.env.ADMIN_EMAIL ?? 'admin@gosen.local').trim().toLowerCase()
+    await conexion.query(
+      `INSERT INTO usuario (email, nombre, contrasena_hash, rol_id) VALUES (?, ?, ?, ?)`,
+      [correo, process.env.ADMIN_NOMBRE ?? 'Administrador', await hashContrasena(clave), rolAdmin],
+    )
+    await conexion.end()
+    log('')
+    log(`Instalación limpia: un solo administrador (${correo}) con la contraseña de ADMIN_CONTRASENA.`)
+    log('Sin datos de prueba. Crea ramas, células y cuentas desde la aplicación.')
+    return
+  }
+
+  // 3b) Datos de prueba — reutiliza el hasheador de la aplicación
   const hashAdmin = await hashContrasena('Admin1234!')
   const hashLider = await hashContrasena('Lider1234!')
 
@@ -232,5 +260,6 @@ async function main() {
 
 main().catch((error) => {
   console.error('[db:setup] error:', error.message)
-  process.exitCode = 1
+  // Una conexión abierta mantendría el proceso vivo para siempre: se termina a la fuerza
+  process.exit(1)
 })

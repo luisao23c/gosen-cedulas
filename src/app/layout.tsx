@@ -2,8 +2,10 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, Lora, Nunito, Poppins } from 'next/font/google'
 import localFont from 'next/font/local'
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v16-appRouter'
+import InitColorSchemeScript from '@mui/material/InitColorSchemeScript'
+import RegistroServiceWorker from '@/components/RegistroServiceWorker'
 import TemaProvider from '@/components/TemaProvider'
-import { apariencia, colores } from '@/theme/theme'
+import { apariencia, paletaReal } from '@/theme/theme'
 import './globals.css'
 
 /**
@@ -54,6 +56,9 @@ const FUENTES_POR_TIPOGRAFIA: Record<typeof apariencia.tipografia, string[]> = {
 }
 
 export const metadata: Metadata = {
+  // iOS: al añadirla a la pantalla de inicio se abre sin la barra del navegador
+  appleWebApp: { capable: true, title: 'Gosén', statusBarStyle: 'default' },
+  applicationName: 'Gosén',
   title: 'Gosen · Gestión de Células y Ramas',
   description:
     'PWA para gestionar ramas, células, integrantes, pase de lista y cumpleaños.',
@@ -64,15 +69,24 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Permite pintar bajo la muesca/barra del sistema; el panel respeta las zonas seguras
   viewportFit: 'cover',
-  themeColor: colores.primario,
+  // Barra del navegador / estado del sistema: la marca de día y la superficie oscura de noche
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: paletaReal.claro.primario },
+    { media: '(prefers-color-scheme: dark)', color: paletaReal.oscuro.superficie },
+  ],
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={FUENTES_POR_TIPOGRAFIA[apariencia.tipografia].join(' ')}>
+    // suppressHydrationWarning: el script de abajo escribe el modo (claro/oscuro) en <html> antes de que React hidrate
+    <html lang="es" className={FUENTES_POR_TIPOGRAFIA[apariencia.tipografia].join(' ')} suppressHydrationWarning>
       <body>
+        {/* Pone el modo guardado (o el del sistema) ANTES del primer pintado: sin destello blanco de noche */}
+        <InitColorSchemeScript attribute="data" />
+
         <AppRouterCacheProvider options={{ enableCssLayer: false }}>
           <TemaProvider>{children}</TemaProvider>
+          <RegistroServiceWorker />
         </AppRouterCacheProvider>
       </body>
     </html>

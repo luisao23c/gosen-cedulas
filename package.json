@@ -8,14 +8,21 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "iconos": "node scripts/generar-iconos.mjs",
     "db:setup": "node scripts/crear-esquema.mjs",
+    "db:preparar-pruebas": "node scripts/preparar-pruebas.mjs",
     "db:migrar-roles": "node scripts/migrar-roles.mjs",
     "db:migrar-integrantes": "node scripts/migrar-integrantes.mjs",
     "db:migrar-ubicaciones": "node scripts/migrar-ubicaciones.mjs",
     "db:migrar-asistencia": "node scripts/migrar-asistencia.mjs",
     "db:migrar-celulas": "node scripts/migrar-celulas.mjs",
     "db:migrar-ministerio": "node scripts/migrar-ministerio.mjs",
+    "db:migrar-seguridad": "node scripts/migrar-seguridad.mjs",
+    "db:migrar-todo": "node scripts/migrar-todo.mjs",
+    "db:respaldar": "node scripts/respaldar.mjs",
+    "db:restaurar": "node scripts/restaurar.mjs",
     "db:migrar-campos": "node scripts/migrar-campos.mjs"
   },
   "dependencies": {
@@ -27,7 +34,7 @@
     "date-fns": "^4.4.0",
     "leaflet": "^1.9.4",
     "mysql2": "^3.24.5",
-    "next": "16.4.0",
+    "next": "^16.4.3",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-leaflet": "^5.0.0",
@@ -39,7 +46,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.4.0",
-    "typescript": "^5"
+    "eslint-config-next": "^16.4.3",
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   }
 }

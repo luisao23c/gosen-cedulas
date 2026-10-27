@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Box, Tab, Tabs } from '@mui/material'
 import { SECCIONES_MINISTERIO, esSeccionActiva, rutaConMinisterio } from '@/lib/ministerio'
-import { movimiento, radios } from '@/theme/theme'
+import { alBorde, movimiento, radios } from '@/theme/theme'
 
 /**
  * Sub-navegación del módulo de ministerio.
@@ -30,27 +30,35 @@ export default function NavegacionMinisterio({
 
   return (
     <Box
-      sx={{
-        borderBottom: 1,
-        borderColor: 'divider',
-        // Las pestañas llegan hasta el borde de la pantalla en móvil
-        mx: { xs: -2, sm: -3, md: 0 },
-        px: { xs: 2, sm: 3, md: 0 },
-      }}
+      // Llegan hasta el borde de la pantalla en el teléfono y se deslizan de lado
+      sx={alBorde}
     >
+      {/* Control segmentado en píldoras (como las apps nativas), no pestañas subrayadas de escritorio */}
       <Tabs
         value={activa ?? false}
         variant="scrollable"
-        scrollButtons="auto"
-        allowScrollButtonsMobile
+        scrollButtons={false}
         sx={{
-          minHeight: 44,
+          minHeight: 40,
+          '& .MuiTabs-flexContainer': { gap: 1 },
+          '& .MuiTabs-indicator': { display: 'none' },
           '& .MuiTab-root': {
-            minHeight: 44,
-            px: { xs: 1.5, md: 2 },
-            transition: `color ${movimiento.rapida} ${movimiento.curva}`,
+            minHeight: 40,
+            minWidth: 0,
+            px: 2,
+            borderRadius: `${radios.pill}px`,
+            color: 'text.secondary',
+            bgcolor: 'background.paper',
+            border: 1,
+            borderColor: 'divider',
+            fontWeight: 700,
+            transition: `background-color ${movimiento.rapida} ${movimiento.curva}, color ${movimiento.rapida} ${movimiento.curva}`,
           },
-          '& .MuiTabs-indicator': { bgcolor: 'primary.main', borderRadius: `${radios.pill}px` },
+          '& .MuiTab-root.Mui-selected': {
+            color: 'primary.contrastText',
+            bgcolor: 'primary.main',
+            borderColor: 'primary.main',
+          },
         }}
       >
         {visibles.map((seccion) => (

@@ -1,5 +1,5 @@
 import { Stack, Typography } from '@mui/material'
-import CakeIcon from '@mui/icons-material/Cake'
+import CakeIcon from '@mui/icons-material/CakeOutlined'
 import { exigirRol } from '@/lib/auth/guardas'
 import { listarConFechaNacimiento } from '@/lib/db/integrantes'
 import { listarRamas } from '@/lib/db/ramas'

@@ -15,9 +15,9 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import EditIcon from '@mui/icons-material/Edit'
-import AddIcon from '@mui/icons-material/Add'
-import DeleteIcon from '@mui/icons-material/Delete'
+import EditIcon from '@mui/icons-material/EditOutlined'
+import AddIcon from '@mui/icons-material/AddOutlined'
+import DeleteIcon from '@mui/icons-material/DeleteOutlined'
 import { borrarCampoAccion, editarCampoAccion, guardarCampoAccion } from '@/features/campos/acciones'
 import { ESTADO_INICIAL, type AccionFormulario } from '@/features/tipos'
 import AccionPrincipal from '@/components/AccionPrincipal'

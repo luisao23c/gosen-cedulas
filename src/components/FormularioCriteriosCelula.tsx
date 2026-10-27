@@ -1,7 +1,7 @@
 'use client'
 
 import { Button, Chip, Divider, Paper, Stack, Typography } from '@mui/material'
-import TuneIcon from '@mui/icons-material/Tune'
+import TuneIcon from '@mui/icons-material/TuneOutlined'
 import DialogoFormulario from '@/components/DialogoFormulario'
 import EditorCriteriosCelula from '@/components/EditorCriteriosCelula'
 import { useFormularioDialogo } from '@/components/useFormularioDialogo'

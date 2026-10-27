@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { Box, ButtonBase, Typography } from '@mui/material'
-import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import ChevronRightIcon from '@mui/icons-material/ChevronRightOutlined'
 import { movimiento, radios, sombras } from '@/theme/theme'
 
 /**
@@ -49,19 +49,23 @@ export default function TarjetaDato({
         '&:active': { transform: 'translateY(1px)' },
       }}
     >
-      <Box
-        aria-hidden
-        sx={{
-          display: 'grid',
-          placeItems: 'center',
-          width: 32,
-          height: 32,
-          borderRadius: `${radios.medio}px`,
-          bgcolor: aviso ? 'action.hover' : 'primary.light',
-          color: aviso ? 'warning.main' : 'primary.dark',
-        }}
-      >
-        {icono}
+      {/* La flecha va arriba, junto al icono: así la etiqueta usa todo el ancho y «Prestados» no se corta */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+        <Box
+          aria-hidden
+          sx={{
+            display: 'grid',
+            placeItems: 'center',
+            width: 32,
+            height: 32,
+            borderRadius: `${radios.medio}px`,
+            bgcolor: aviso ? 'action.hover' : 'primary.light',
+            color: aviso ? 'warning.main' : 'primary.dark',
+          }}
+        >
+          {icono}
+        </Box>
+        <ChevronRightIcon fontSize="small" sx={{ color: 'text.secondary' }} />
       </Box>
       <Typography
         variant="h3"
@@ -70,12 +74,9 @@ export default function TarjetaDato({
       >
         {valor}
       </Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', minWidth: 0 }}>
-        <Typography variant="subtitle2" noWrap sx={{ flex: 1 }}>
-          {etiqueta}
-        </Typography>
-        <ChevronRightIcon fontSize="small" sx={{ color: 'text.secondary', flexShrink: 0 }} />
-      </Box>
+      <Typography variant="subtitle2" noWrap sx={{ width: '100%' }}>
+        {etiqueta}
+      </Typography>
       <Typography
         variant="caption"
         color="text.secondary"

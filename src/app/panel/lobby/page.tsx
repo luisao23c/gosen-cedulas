@@ -1,5 +1,5 @@
 import { Stack } from '@mui/material'
-import PersonPinCircleIcon from '@mui/icons-material/PersonPinCircle'
+import PersonPinCircleIcon from '@mui/icons-material/PersonPinCircleOutlined'
 import { exigirRol } from '@/lib/auth/guardas'
 import { listarCelulas } from '@/lib/db/celulas'
 import { listarRamas } from '@/lib/db/ramas'

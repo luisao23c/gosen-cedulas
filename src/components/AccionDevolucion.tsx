@@ -1,7 +1,7 @@
 'use client'
 
-import { IconButton, MenuItem, Stack, TextField, Tooltip, Typography } from '@mui/material'
-import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn'
+import { Button, IconButton, MenuItem, Stack, TextField, Tooltip, Typography } from '@mui/material'
+import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedInOutlined'
 import { registrarDevolucion } from '@/features/ministerio/acciones'
 import { CONSERVACIONES, ETIQUETAS_CONSERVACION, type ConservacionEquipo } from '@/types/domain'
 import DialogoFormulario from '@/components/DialogoFormulario'
@@ -17,12 +17,15 @@ export default function AccionDevolucion({
   equipo,
   responsable,
   estadoAvisado = null,
+  comoBoton = false,
 }: {
   prestamoId: number
   equipo: string | null
   responsable: string | null
   /** Si quien lo trae ya avisó que lo devolvió, el estado que declaró (viene preseleccionado) */
   estadoAvisado?: ConservacionEquipo | null
+  /** Botón con texto (dentro de la fila del teléfono) en vez del icono */
+  comoBoton?: boolean
 }) {
   const { abierto, abrir, cerrar, error, pendiente, enviar } = useFormularioDialogo(
     registrarDevolucion,
@@ -31,6 +34,17 @@ export default function AccionDevolucion({
 
   return (
     <>
+      {comoBoton ? (
+        <Button
+          size="small"
+          variant="contained"
+          color={estadoAvisado ? 'warning' : 'primary'}
+          startIcon={<AssignmentTurnedInIcon />}
+          onClick={abrir}
+        >
+          {estadoAvisado ? 'Recibir' : 'Registrar devolución'}
+        </Button>
+      ) : (
       <Tooltip title={estadoAvisado ? 'Confirmar que lo recibiste' : 'Registrar devolución'}>
         <IconButton
           color={estadoAvisado ? 'warning' : 'primary'}
@@ -40,6 +54,7 @@ export default function AccionDevolucion({
           <AssignmentTurnedInIcon fontSize="small" />
         </IconButton>
       </Tooltip>
+      )}
 
       <DialogoFormulario
         abierto={abierto}

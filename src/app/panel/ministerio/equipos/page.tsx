@@ -1,5 +1,5 @@
 import { Stack } from '@mui/material'
-import Inventory2Icon from '@mui/icons-material/Inventory2'
+import Inventory2Icon from '@mui/icons-material/Inventory2Outlined'
 import { exigirRol } from '@/lib/auth/guardas'
 import { puede, rolPuede, type Recurso } from '@/lib/auth/permisos'
 import { listarEquipos } from '@/lib/db/equipos'
@@ -107,8 +107,9 @@ export default async function PaginaEquipos({
           : []),
         {
           clave: 'trae',
-          etiqueta: 'Quién lo trae',
-          texto: prestamo?.nombreResponsable ?? 'Nadie: está en el inventario',
+          etiqueta: 'Lo lleva',
+          // Sin préstamo no hay nadie: el chip «Disponible» ya lo dice, así que no se repite en la fila
+          texto: prestamo?.nombreAsignado ?? prestamo?.nombreResponsable ?? '—',
         },
         {
           clave: 'salida',
@@ -128,6 +129,22 @@ export default async function PaginaEquipos({
         },
         { clave: 'descripcion', etiqueta: 'Descripción', texto: equipo.descripcion ?? '—' },
       ],
+      accionVisible: prestable ? (
+        <FormularioPrestamo
+          comoBoton
+          equipos={[
+            {
+              id: equipo.id,
+              nombre: equipo.nombre,
+              ministerio: equipo.nombreMinisterio,
+              ministerioId: equipo.ministerioId,
+            },
+          ]}
+          cuentas={cuentas}
+          eventos={eventosLigables}
+          equipoIdInicial={equipo.id}
+        />
+      ) : undefined,
       acciones: (
         <>
           {prestable ? (
@@ -210,11 +227,12 @@ export default async function PaginaEquipos({
       ) : null}
 
       <ListadoResponsivo
+        filtros={[{ clave: 'estatus', etiqueta: 'Estado' }]}
         filas={filas}
         etiquetas={[
           'Equipo',
           ...(variosMinisterios ? ['Ministerio'] : []),
-          'Quién lo trae',
+          'Lo lleva',
           'Salió',
           'Estatus',
           'Descripción',

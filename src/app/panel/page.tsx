@@ -1,263 +1,247 @@
-import { Box, Button, CardActionArea, Chip, Paper, Stack, Typography } from '@mui/material'
-import AccountTreeIcon from '@mui/icons-material/AccountTree'
-import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism'
-import AssignmentIcon from '@mui/icons-material/Assignment'
-import PersonPinCircleIcon from '@mui/icons-material/PersonPinCircle'
-import GroupIcon from '@mui/icons-material/Group'
-import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import ChecklistIcon from '@mui/icons-material/Checklist'
-import CakeIcon from '@mui/icons-material/Cake'
-import AddIcon from '@mui/icons-material/Add'
+import { Box, Button, Chip, Paper, Stack, Typography } from '@mui/material'
+import AccountTreeIcon from '@mui/icons-material/AccountTreeOutlined'
+import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivismOutlined'
+import AssignmentIcon from '@mui/icons-material/AssignmentOutlined'
+import PersonPinCircleIcon from '@mui/icons-material/PersonPinCircleOutlined'
+import GroupIcon from '@mui/icons-material/GroupOutlined'
+import ChecklistIcon from '@mui/icons-material/ChecklistOutlined'
+import CakeIcon from '@mui/icons-material/CakeOutlined'
+import EventIcon from '@mui/icons-material/EventOutlined'
+import InventoryIcon from '@mui/icons-material/InventoryOutlined'
+import KeyboardReturnIcon from '@mui/icons-material/KeyboardReturnOutlined'
+import EventAvailableIcon from '@mui/icons-material/EventAvailableOutlined'
+import AddIcon from '@mui/icons-material/AddOutlined'
 import { exigirSesion } from '@/lib/auth/guardas'
 import { puede, rolPuede } from '@/lib/auth/permisos'
 import { listarRamas } from '@/lib/db/ramas'
 import { listarCelulas } from '@/lib/db/celulas'
 import { listarUsuarios } from '@/lib/db/usuarios'
 import { listarConFechaNacimiento } from '@/lib/db/integrantes'
+import { listarEventos, listarMisTurnos } from '@/lib/db/eventos'
+import { listarPrestamos } from '@/lib/db/prestamos'
+import { fasePrestamo } from '@/lib/prestamo'
 import { cumpleanosProximos, etiquetaFaltan } from '@/lib/cumpleanos'
-import { formatearFecha } from '@/lib/fechas'
+import { formatearFechaConDia, hoyISO } from '@/lib/fechas'
 import { nombreCompleto } from '@/types/domain'
 import { inicialesDe } from '@/lib/nombres'
-import { colores, degradados, fuentes, movimiento, radios, sombras } from '@/theme/theme'
+import BandejaPendientes, { type Pendiente } from '@/components/BandejaPendientes'
+import TarjetaDato from '@/components/TarjetaDato'
+import { colores, degradados, radios, sombras } from '@/theme/theme'
 
 export const instant = false
 export const metadata = { title: 'Inicio · Gosen' }
 
-/** Tarjeta de cifra: icono, valor grande, contexto y flecha hacia su sección. */
-function Cifra({
-  titulo,
-  valor,
-  detalle,
-  href,
-  icono,
-}: {
-  titulo: string
-  valor: number
-  detalle: string
-  href: string
-  icono: React.ReactNode
-}) {
-  return (
-    <Paper
-      variant="outlined"
-      sx={{
-        overflow: 'hidden',
-        transition: `box-shadow ${movimiento.normal} ${movimiento.curva}, transform ${movimiento.normal} ${movimiento.curva}, border-color ${movimiento.rapida} linear`,
-        '&:hover': {
-          boxShadow: sombras.media,
-          transform: 'translateY(-2px)',
-          borderColor: 'primary.main',
-        },
-        '&:hover .flecha': { color: 'primary.main', transform: 'translateX(2px)' },
-      }}
-    >
-      <CardActionArea href={href} sx={{ p: 2.5, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Box
-          aria-hidden
-          sx={{
-            display: 'grid',
-            placeItems: 'center',
-            width: 48,
-            height: 48,
-            flexShrink: 0,
-            borderRadius: `${radios.grande}px`,
-            bgcolor: 'primary.light',
-            color: 'primary.dark',
-          }}
-        >
-          {icono}
-        </Box>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="overline" color="text.secondary">
-            {titulo}
-          </Typography>
-          <Typography
-            variant="h3"
-            component="p"
-            sx={{ fontFamily: fuentes.numeros, lineHeight: 1.1, fontWeight: 700 }}
-          >
-            {valor}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {detalle}
-          </Typography>
-        </Box>
-        <ChevronRightIcon
-          className="flecha"
-          sx={{
-            color: 'text.disabled',
-            flexShrink: 0,
-            transition: `color ${movimiento.rapida} linear, transform ${movimiento.normal} ${movimiento.curva}`,
-          }}
-        />
-      </CardActionArea>
-    </Paper>
-  )
-}
-
+/**
+ * Inicio: lo primero que se ve es QUÉ LE TOCA HACER a quien entra («Qué sigue»),
+ * después los atajos para empezar algo nuevo y, al final y en pequeño, las cifras.
+ *
+ * Antes era un tablero de contadores (5 ramas, 6 células, 7 cuentas) que ocupaba
+ * toda la pantalla del teléfono sin decir qué hacer. Ahora cada tarea trae su
+ * verbo («Pasar lista», «Recibir», «Confirmar»…) y lleva directo a donde se hace.
+ */
 export default async function Panel() {
   const usuario = await exigirSesion()
+  const hoy = hoyISO()
 
-  // Cada cifra solo se calcula (y se muestra) si el rol puede ver ese recurso
+  // Cada bloque solo se calcula (y se muestra) si el rol puede ver ese recurso
   const veRamas = rolPuede(usuario, 'ver', 'rama')
   const veCelulas = rolPuede(usuario, 'ver', 'celula')
   const veUsuarios = rolPuede(usuario, 'ver', 'usuario')
   const veAsistencia = rolPuede(usuario, 'ver', 'asistencia')
   const veIntegrantes = rolPuede(usuario, 'ver', 'integrante')
-
-  const [ramas, celulas, usuarios, conFechaNacimiento] = await Promise.all([
-    veRamas ? listarRamas(usuario, usuario.alcance !== 'ORGANIZACION') : Promise.resolve([]),
-    veCelulas ? listarCelulas(usuario, { soloActivas: true }) : Promise.resolve([]),
-    veUsuarios ? listarUsuarios(usuario) : Promise.resolve([]),
-    veIntegrantes ? listarConFechaNacimiento(usuario) : Promise.resolve([]),
-  ])
-
-  // El día que toca: las células que hoy tienen reunión, para pasar lista
-  const celulasDeHoy = veAsistencia
-    ? celulas.filter((celula) => celula.diaSemana === new Date().getDay())
-    : []
-
-  // Los cumpleaños del mes: los cinco más cercanos de los próximos 30 días
-  const cumpleanos = cumpleanosProximos(conFechaNacimiento, 30).slice(0, 5)
-
-  const hayAlgo = veRamas || veCelulas || veUsuarios
   // Quien solo sirve en un ministerio (servidor, encargado) no ve ramas ni células, pero sí tiene su espacio
   const veMinisterio =
     rolPuede(usuario, 'ver', 'ministerio') ||
     rolPuede(usuario, 'ver', 'equipo') ||
     rolPuede(usuario, 'ver', 'evento')
-  const puedeCrearRama = puede(usuario, 'crear', 'rama')
-  // Quien puede registrar integrantes tiene su atajo directo al lobby
-  const puedeRegistrar = rolPuede(usuario, 'crear', 'integrante')
-  const iniciales = inicialesDe(usuario.nombre)
 
-  const accesos = [
-    { etiqueta: 'Ramas', href: '/panel/ramas', icono: <AccountTreeIcon fontSize="small" />, visible: veRamas },
-    { etiqueta: 'Células', href: '/panel/celulas', icono: <AssignmentIcon fontSize="small" />, visible: veCelulas },
+  const [ramas, celulas, usuarios, conFechaNacimiento, misTurnos, prestamos, eventosDeHoy] =
+    await Promise.all([
+      veRamas ? listarRamas(usuario, usuario.alcance !== 'ORGANIZACION') : Promise.resolve([]),
+      veCelulas ? listarCelulas(usuario, { soloActivas: true }) : Promise.resolve([]),
+      veUsuarios ? listarUsuarios(usuario) : Promise.resolve([]),
+      veIntegrantes ? listarConFechaNacimiento(usuario) : Promise.resolve([]),
+      veMinisterio ? listarMisTurnos(usuario.id, { desde: hoy }) : Promise.resolve([]),
+      // Préstamos a mi alcance (el equipo que llevo y, si soy encargado, lo que hay por recibir)
+      veMinisterio ? listarPrestamos(usuario) : Promise.resolve([]),
+      veMinisterio && rolPuede(usuario, 'ver', 'evento')
+        ? listarEventos(usuario, { desde: hoy, hasta: hoy })
+        : Promise.resolve([]),
+    ])
+
+  /* ── Lo que le toca hacer ───────────────────────────────────── */
+  const pendientes: Pendiente[] = []
+
+  // 1) Servicio: lo mío primero (turnos por confirmar y equipo a mi cargo)
+  for (const { evento, turno } of misTurnos) {
+    if (turno.confirmado) continue
+    pendientes.push({
+      clave: `turno-${turno.id}`,
+      icono: <EventAvailableIcon />,
+      titulo: `Confirma tu turno: ${evento.nombre}`,
+      detalle: `${evento.fecha === hoy ? 'Hoy' : formatearFechaConDia(evento.fecha)}${evento.horaLlegada ? ` · deben estar a las ${evento.horaLlegada}` : ''}${turno.funcion ? ` · tu rol: ${turno.funcion}` : ''}`,
+      href: '/panel/ministerio/mis-turnos',
+      verbo: 'Confirmar',
+      urgente: evento.fecha === hoy,
+    })
+  }
+  for (const prestamo of prestamos) {
+    const lleva = prestamo.responsableId === usuario.id || prestamo.asignadoAId === usuario.id
+    const fase = fasePrestamo(prestamo)
+    if (lleva && fase === 'POR_RECOGER') {
+      pendientes.push({
+        clave: `recoger-${prestamo.id}`,
+        icono: <InventoryIcon />,
+        titulo: `Recoge «${prestamo.nombreEquipo ?? 'el equipo'}»`,
+        detalle: 'Confirma cuando ya lo tengas contigo.',
+        href: '/panel/ministerio/mis-turnos',
+        verbo: 'Ya lo recogí',
+        urgente: true,
+      })
+    }
+  }
+
+  // 2) Servicio: lo que debo atender como encargado (recibir lo que ya devolvieron)
+  for (const prestamo of prestamos) {
+    if (fasePrestamo(prestamo) !== 'POR_REVISAR') continue
+    if (!puede(usuario, 'editar', 'prestamo', { ministerioId: prestamo.ministerioId })) continue
+    pendientes.push({
+      clave: `recibir-${prestamo.id}`,
+      icono: <KeyboardReturnIcon />,
+      titulo: `Recibe «${prestamo.nombreEquipo ?? 'el equipo'}»`,
+      detalle: `Lo devolvió ${prestamo.nombreAsignado ?? prestamo.nombreResponsable ?? 'quien lo llevaba'}: revísalo y confírmalo.`,
+      href: '/panel/ministerio/prestamos',
+      verbo: 'Recibir',
+      urgente: true,
+    })
+  }
+  for (const evento of eventosDeHoy) {
+    if (!puede(usuario, 'editar', 'evento', { ministerioId: evento.ministerioId })) continue
+    pendientes.push({
+      clave: `evento-${evento.id}`,
+      icono: <EventIcon />,
+      titulo: `Hoy: ${evento.nombre}`,
+      detalle:
+        evento.totalServidores === 0
+          ? 'Todavía no hay nadie asignado.'
+          : `${evento.confirmados} de ${evento.totalServidores} confirmaron · ${evento.llegaron} ya llegaron`,
+      href: `/panel/ministerio/eventos/${evento.id}`,
+      verbo: 'Ver evento',
+    })
+  }
+
+  // 3) Células: las que hoy tienen reunión, para pasar lista
+  const celulasDeHoy = veAsistencia
+    ? celulas.filter((celula) => celula.diaSemana === new Date().getDay())
+    : []
+  for (const celula of celulasDeHoy) {
+    pendientes.push({
+      clave: `lista-${celula.id}`,
+      icono: <ChecklistIcon />,
+      titulo: `Pasa lista en ${celula.nombre}`,
+      detalle: `Hoy se reúne${celula.hora ? ` a las ${celula.hora}` : ''}.`,
+      href: `/panel/celulas/${celula.id}`,
+      verbo: 'Pasar lista',
+    })
+  }
+
+  // 4) Cumpleaños de la semana
+  const cumpleanosSemana = cumpleanosProximos(conFechaNacimiento, 7).slice(0, 4)
+  for (const { persona, cumple } of cumpleanosSemana) {
+    pendientes.push({
+      clave: `cumple-${persona.id}`,
+      icono: <CakeIcon />,
+      titulo: `Cumpleaños de ${nombreCompleto(persona)}`,
+      detalle: `${etiquetaFaltan(cumple.dias)}.`,
+      href: `/panel/celulas/${persona.celulaId}`,
+      verbo: 'Ver',
+    })
+  }
+
+  /* ── Atajos para empezar algo ───────────────────────────────── */
+  const puedeCrearRama = puede(usuario, 'crear', 'rama')
+  const puedeRegistrar = rolPuede(usuario, 'crear', 'integrante')
+  const atajos = [
     {
-      etiqueta: 'Registrar por ubicación',
+      etiqueta: 'Registrar persona',
       href: '/panel/lobby',
-      icono: <PersonPinCircleIcon fontSize="small" />,
+      icono: <PersonPinCircleIcon />,
       visible: puedeRegistrar,
     },
-    {
-      etiqueta: 'Cumpleaños',
-      href: '/panel/cumpleanos',
-      icono: <CakeIcon fontSize="small" />,
-      visible: veIntegrantes,
-    },
+    { etiqueta: 'Mis células', href: '/panel/celulas', icono: <AssignmentIcon />, visible: veCelulas },
+    { etiqueta: 'Ramas', href: '/panel/ramas', icono: <AccountTreeIcon />, visible: veRamas },
     {
       etiqueta: 'Ministerio',
       href: '/panel/ministerio',
-      icono: <VolunteerActivismIcon fontSize="small" />,
+      icono: <VolunteerActivismIcon />,
       visible: veMinisterio,
     },
-    { etiqueta: 'Usuarios', href: '/panel/usuarios', icono: <GroupIcon fontSize="small" />, visible: veUsuarios },
-  ].filter((acceso) => acceso.visible)
+    { etiqueta: 'Cumpleaños', href: '/panel/cumpleanos', icono: <CakeIcon />, visible: veIntegrantes },
+    { etiqueta: 'Usuarios', href: '/panel/usuarios', icono: <GroupIcon />, visible: veUsuarios },
+  ].filter((atajo) => atajo.visible)
+
+  const tieneAlgo = veRamas || veCelulas || veUsuarios || veMinisterio || veIntegrantes
+  const nombrePila = usuario.nombre.split(' ')[0]
 
   return (
     <Stack spacing={3}>
-      {/* Portada: da la bienvenida y sitúa al usuario antes de las cifras */}
+      {/* Saludo breve: ya no ocupa media pantalla */}
       <Paper
         sx={{
-          p: { xs: 2.5, sm: 3 },
-          borderRadius: `${radios.extra}px`,
+          px: 2.5,
+          py: 2,
+          borderRadius: `${radios.grande}px`,
           backgroundImage: degradados.marca,
-          color: 'primary.contrastText',
-          boxShadow: sombras.media,
+          color: colores.textoSobreMarca,
+          boxShadow: sombras.suave,
         }}
       >
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={2}
-          sx={{ alignItems: { xs: 'flex-start', sm: 'center' } }}
-        >
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
           <Box
             aria-hidden
             sx={{
               display: 'grid',
               placeItems: 'center',
-              width: 52,
-              height: 52,
+              width: 44,
+              height: 44,
               flexShrink: 0,
               borderRadius: `${radios.pill}px`,
               bgcolor: colores.veloMarca,
             }}
           >
-            <Typography variant="h5" component="span" sx={{ color: 'inherit' }}>
-              {iniciales}
+            <Typography variant="subtitle1" component="span" sx={{ color: 'inherit' }}>
+              {inicialesDe(usuario.nombre)}
             </Typography>
           </Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="h3" component="h1" sx={{ color: 'inherit' }}>
-              Hola, {usuario.nombre}
+            <Typography variant="h4" component="h1" noWrap sx={{ color: 'inherit' }}>
+              Hola, {nombrePila}
             </Typography>
             <Typography variant="body2" sx={{ color: 'inherit', opacity: 0.85 }}>
               {usuario.alcance === 'ORGANIZACION'
-                ? 'Vista general de toda la organización.'
-                : 'Vista general de tu alcance: solo lo que te corresponde.'}
+                ? 'Toda la organización'
+                : 'Solo lo que te corresponde'}
             </Typography>
           </Box>
           <Chip
+            size="small"
             label={usuario.rolNombre}
             sx={{
               bgcolor: colores.veloMarca,
               color: 'inherit',
               fontWeight: 700,
               border: `1px solid ${colores.veloMarcaBorde}`,
+              display: { xs: 'none', sm: 'inline-flex' },
             }}
           />
         </Stack>
       </Paper>
 
-      {hayAlgo ? (
-        <Box
-          sx={{
-            display: 'grid',
-            gap: 2,
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
-          }}
-        >
-          {veRamas ? (
-            <Cifra
-              titulo="Ramas"
-              valor={ramas.length}
-              detalle={ramas.length === 1 ? 'rama visible' : 'ramas visibles'}
-              href="/panel/ramas"
-              icono={<AccountTreeIcon />}
-            />
-          ) : null}
-          {veCelulas ? (
-            <Cifra
-              titulo="Células"
-              valor={celulas.length}
-              detalle={celulas.length === 1 ? 'célula activa' : 'células activas'}
-              href="/panel/celulas"
-              icono={<AssignmentIcon />}
-            />
-          ) : null}
-          {veUsuarios ? (
-            <Cifra
-              titulo="Cuentas"
-              valor={usuarios.length}
-              detalle={usuarios.length === 1 ? 'cuenta de acceso' : 'cuentas de acceso'}
-              href="/panel/usuarios"
-              icono={<GroupIcon />}
-            />
-          ) : null}
-        </Box>
-      ) : veMinisterio ? (
-        <Paper variant="outlined" sx={{ p: 3 }}>
-          <Stack spacing={1.5} sx={{ alignItems: 'flex-start' }}>
-            <Typography variant="subtitle1">Tu espacio de servicio</Typography>
-            <Typography color="text.secondary">
-              Aquí ves los equipos, los eventos en los que sirves y lo que tienes a tu cargo.
-            </Typography>
-            <Button href="/panel/ministerio" variant="contained" size="large">
-              Ir al ministerio
-            </Button>
-          </Stack>
-        </Paper>
+      {tieneAlgo ? (
+        <BandejaPendientes
+          pendientes={pendientes}
+          vacio="Estás al día: no hay nada pendiente por ahora."
+        />
       ) : (
         <Paper variant="outlined" sx={{ p: 3 }}>
           <Typography variant="subtitle1">Tu rol todavía no tiene permisos</Typography>
@@ -267,93 +251,83 @@ export default async function Panel() {
         </Paper>
       )}
 
-      {celulasDeHoy.length > 0 ? (
-        <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 } }}>
-          <Stack spacing={1.5}>
-            <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-              <ChecklistIcon fontSize="small" color="primary" />
-              <Typography variant="overline" color="text.secondary">
-                Hoy toca reunión
-              </Typography>
-            </Stack>
-            <Typography variant="body2" color="text.secondary">
-              {celulasDeHoy.length === 1
-                ? 'Una de tus células se reúne hoy. Entra a ella para pasar lista.'
-                : `${celulasDeHoy.length} de tus células se reúnen hoy. Entra a cada una para pasar lista.`}
-            </Typography>
-            <Stack spacing={1}>
-              {celulasDeHoy.map((celula) => (
-                <Button
-                  key={celula.id}
-                  href={`/panel/celulas/${celula.id}`}
-                  variant="outlined"
-                  endIcon={<ChevronRightIcon />}
-                  sx={{ justifyContent: 'space-between', textAlign: 'left' }}
-                >
-                  {celula.nombre}
-                  {celula.hora ? ` · ${celula.hora}` : ''}
-                </Button>
-              ))}
-            </Stack>
-          </Stack>
-        </Paper>
-      ) : null}
-
-      {cumpleanos.length > 0 ? (
-        <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 } }}>
-          <Stack spacing={1.5}>
-            <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-              <CakeIcon fontSize="small" color="primary" />
-              <Typography variant="overline" color="text.secondary">
-                Próximos cumpleaños
-              </Typography>
-            </Stack>
-            <Typography variant="body2" color="text.secondary">
-              {cumpleanos.length === 1
-                ? 'Un integrante cumple años en los próximos 30 días.'
-                : 'Estos integrantes cumplen años en los próximos 30 días.'}
-            </Typography>
-            <Stack spacing={1}>
-              {cumpleanos.map(({ persona, cumple }) => (
-                <Button
-                  key={persona.id}
-                  href={`/panel/celulas/${persona.celulaId}`}
-                  variant="outlined"
-                  endIcon={<ChevronRightIcon />}
-                  sx={{ justifyContent: 'space-between', textAlign: 'left' }}
-                >
-                  {`${nombreCompleto(persona)} · ${etiquetaFaltan(cumple.dias)} (${formatearFecha(cumple.fecha)})`}
-                </Button>
-              ))}
-            </Stack>
-            <Button
-              href="/panel/cumpleanos"
-              size="small"
-              sx={{ alignSelf: 'flex-start' }}
-            >
-              Ver todos los cumpleaños
-            </Button>
-          </Stack>
-        </Paper>
-      ) : null}
-
-      {accesos.length > 0 || puedeCrearRama ? (
-        <Box>
-          <Typography variant="overline" color="text.secondary">
-            Accesos rápidos
+      {atajos.length > 0 || puedeCrearRama ? (
+        <Box component="section" aria-labelledby="titulo-atajos">
+          <Typography id="titulo-atajos" variant="h4" component="h2" sx={{ mb: 1.5 }}>
+            Ir a
           </Typography>
-          <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap', gap: 1 }}>
-            {accesos.map((acceso) => (
-              <Button key={acceso.href} href={acceso.href} variant="outlined" startIcon={acceso.icono}>
-                {acceso.etiqueta}
+          <Box
+            sx={{
+              display: 'grid',
+              gap: 1,
+              gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' },
+            }}
+          >
+            {atajos.map((atajo) => (
+              <Button
+                key={atajo.href}
+                href={atajo.href}
+                variant="outlined"
+                size="large"
+                startIcon={atajo.icono}
+                sx={{ justifyContent: 'flex-start', minHeight: 56, bgcolor: 'background.paper' }}
+              >
+                {atajo.etiqueta}
               </Button>
             ))}
             {puedeCrearRama ? (
-              <Button href="/panel/ramas" variant="contained" startIcon={<AddIcon />}>
+              <Button
+                href="/panel/ramas"
+                variant="outlined"
+                size="large"
+                startIcon={<AddIcon />}
+                sx={{ justifyContent: 'flex-start', minHeight: 56, bgcolor: 'background.paper' }}
+              >
                 Nueva rama
               </Button>
             ) : null}
-          </Stack>
+          </Box>
+        </Box>
+      ) : null}
+
+      {/* Las cifras, al final y compactas: sirven para ubicarse, no para decidir. Rejilla tipo bento: en el
+          teléfono la primera cifra ocupa todo el ancho y las demás van de a dos; en pantalla grande, una fila. */}
+      {veRamas || veCelulas || veUsuarios ? (
+        <Box
+          sx={{
+            display: 'grid',
+            gap: { xs: 1, sm: 2 },
+            gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' },
+            '& > :first-of-type': { gridColumn: { xs: '1 / -1', sm: 'auto' } },
+          }}
+        >
+          {veRamas ? (
+            <TarjetaDato
+              etiqueta="Ramas"
+              valor={ramas.length}
+              ayuda={ramas.length === 1 ? 'rama visible' : 'ramas visibles'}
+              href="/panel/ramas"
+              icono={<AccountTreeIcon fontSize="small" />}
+            />
+          ) : null}
+          {veCelulas ? (
+            <TarjetaDato
+              etiqueta="Células"
+              valor={celulas.length}
+              ayuda={celulas.length === 1 ? 'célula activa' : 'células activas'}
+              href="/panel/celulas"
+              icono={<AssignmentIcon fontSize="small" />}
+            />
+          ) : null}
+          {veUsuarios ? (
+            <TarjetaDato
+              etiqueta="Cuentas"
+              valor={usuarios.length}
+              ayuda={usuarios.length === 1 ? 'cuenta de acceso' : 'cuentas de acceso'}
+              href="/panel/usuarios"
+              icono={<GroupIcon fontSize="small" />}
+            />
+          ) : null}
         </Box>
       ) : null}
     </Stack>

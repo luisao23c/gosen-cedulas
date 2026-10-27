@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { IconButton, Tooltip } from '@mui/material'
-import BlockIcon from '@mui/icons-material/Block'
+import BlockIcon from '@mui/icons-material/BlockOutlined'
 import { useAviso } from '@/components/AvisoProvider'
 import { ESTADO_INICIAL, type AccionFormulario } from '@/features/tipos'
 

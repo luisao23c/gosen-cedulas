@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Alert, Button, IconButton, Stack, Tooltip } from '@mui/material'
-import InventoryIcon from '@mui/icons-material/Inventory'
+import InventoryIcon from '@mui/icons-material/InventoryOutlined'
 import { confirmarRecogida } from '@/features/ministerio/acciones'
 import { ESTADO_INICIAL } from '@/features/tipos'
 import { useAviso } from '@/components/AvisoProvider'
@@ -18,11 +18,14 @@ export default function AccionRecogida({
   prestamoId,
   equipo,
   comoBoton = false,
+  compacto = false,
 }: {
   prestamoId: number
   equipo: string | null
   /** En «Mi servicio» conviene un botón ancho; en la tabla, un icono */
   comoBoton?: boolean
+  /** Botón pequeño con texto, para dentro de una fila de lista */
+  compacto?: boolean
 }) {
   const router = useRouter()
   const avisar = useAviso()
@@ -46,7 +49,17 @@ export default function AccionRecogida({
 
   return (
     <Stack spacing={1} sx={{ alignItems: comoBoton ? 'stretch' : 'flex-start' }}>
-      {comoBoton ? (
+      {compacto ? (
+        <Button
+          size="small"
+          variant="contained"
+          startIcon={<InventoryIcon />}
+          onClick={enviar}
+          disabled={pendiente}
+        >
+          {pendiente ? 'Guardando…' : 'Confirmar entrega'}
+        </Button>
+      ) : comoBoton ? (
         <Button
           variant="contained"
           size="large"

@@ -1,5 +1,5 @@
 import { Box, Button, Paper, Stack, Typography } from '@mui/material'
-import SearchOffIcon from '@mui/icons-material/SearchOff'
+import SearchOffIcon from '@mui/icons-material/SearchOffOutlined'
 import { radios } from '@/theme/theme'
 
 export const metadata = { title: 'No encontrado · Gosen' }

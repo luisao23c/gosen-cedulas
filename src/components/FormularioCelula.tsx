@@ -1,6 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import {
+  Box,
+  Button,
+  Collapse,
   FormControlLabel,
   IconButton,
   MenuItem,
@@ -9,8 +13,10 @@ import {
   TextField,
   Tooltip,
 } from '@mui/material'
-import EditIcon from '@mui/icons-material/Edit'
-import AddIcon from '@mui/icons-material/Add'
+import EditIcon from '@mui/icons-material/EditOutlined'
+import AddIcon from '@mui/icons-material/AddOutlined'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMoreOutlined'
+import ExpandLessIcon from '@mui/icons-material/ExpandLessOutlined'
 import { guardarCelula, editarCelula } from '@/features/celulas/acciones'
 import type { AccionFormulario, OpcionRama, OpcionUsuario } from '@/features/tipos'
 import { DIAS_SEMANA, type CampoDiferenciador, type CriterioCelula } from '@/types/domain'
@@ -67,6 +73,9 @@ export default function FormularioCelula({
     esEdicion ? 'Célula actualizada' : 'Célula creada',
   )
 
+  // «A quién le sirve» es opcional: arranca plegado, salvo que la célula ya declare algo
+  const [verCriterios, setVerCriterios] = useState((criterios?.length ?? 0) > 0)
+
   // Lidera una célula quien tiene un rol con alcance de célula
   const candidatosLider = usuarios.filter((usuario) => usuario.alcance === 'CELULA')
 
@@ -83,6 +92,7 @@ export default function FormularioCelula({
       )}
 
       <DialogoFormulario
+        completa
         abierto={abierto}
         titulo={esEdicion ? 'Editar célula' : 'Nueva célula'}
         alCerrar={cerrar}
@@ -121,27 +131,29 @@ export default function FormularioCelula({
             autoFocus={esEdicion || ramaId != null}
           />
 
-          <TextField
-            select
-            name="diaSemana"
-            label="Día de reunión"
-            defaultValue={inicial?.diaSemana ?? ''}
-          >
-            <MenuItem value="">Sin día fijo</MenuItem>
-            {DIAS_SEMANA.map((dia, indice) => (
-              <MenuItem key={dia} value={indice}>
-                {dia}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          <TextField
-            name="hora"
-            label="Hora"
-            type="time"
-            defaultValue={inicial?.hora ?? ''}
-            slotProps={{ inputLabel: { shrink: true } }}
-          />
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
+            <TextField
+              select
+              name="diaSemana"
+              label="Día de reunión"
+              defaultValue={inicial?.diaSemana ?? ''}
+            >
+              <MenuItem value="">Sin día fijo</MenuItem>
+              {DIAS_SEMANA.map((dia, indice) => (
+                <MenuItem key={dia} value={indice}>
+                  {dia}
+                </MenuItem>
+              ))}
+            </TextField>
+  
+            <TextField
+              name="hora"
+              label="Hora"
+              type="time"
+              defaultValue={inicial?.hora ?? ''}
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+          </Box>
 
           <CampoUbicacion
             etiqueta="Ubicación de la célula"
@@ -150,7 +162,21 @@ export default function FormularioCelula({
           />
 
           {campos && criterios ? (
-            <EditorCriteriosCelula campos={campos} criterios={criterios} />
+            <Box>
+              <Button
+                size="small"
+                onClick={() => setVerCriterios((valor) => !valor)}
+                endIcon={verCriterios ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                aria-expanded={verCriterios}
+              >
+                A quién le sirve (opcional)
+              </Button>
+              <Collapse in={verCriterios}>
+                <Box sx={{ pt: 1.5 }}>
+                  <EditorCriteriosCelula campos={campos} criterios={criterios} />
+                </Box>
+              </Collapse>
+            </Box>
           ) : null}
 
           {esEdicion ? (

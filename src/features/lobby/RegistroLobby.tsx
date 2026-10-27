@@ -17,10 +17,10 @@ import {
   Stack,
   Typography,
 } from '@mui/material'
-import PlaceIcon from '@mui/icons-material/Place'
-import CheckIcon from '@mui/icons-material/Check'
-import CloseIcon from '@mui/icons-material/Close'
-import HowToRegIcon from '@mui/icons-material/HowToReg'
+import PlaceIcon from '@mui/icons-material/PlaceOutlined'
+import CheckIcon from '@mui/icons-material/CheckOutlined'
+import CloseIcon from '@mui/icons-material/CloseOutlined'
+import HowToRegIcon from '@mui/icons-material/HowToRegOutlined'
 import { guardarIntegrante } from '@/features/integrantes/acciones'
 import { ESTADO_INICIAL } from '@/features/tipos'
 import { nombreCompleto } from '@/types/domain'

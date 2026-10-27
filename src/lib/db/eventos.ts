@@ -30,7 +30,8 @@ interface FilaEvento extends RowDataPacket {
   llegaron?: number | string
 }
 
-interface FilaTurno extends RowDataPacket {
+/** Columnas de un turno ya con su nombre final (sin ser fila de MySQL: también se arma a mano). */
+interface DatosTurno {
   id: number
   evento_id: number
   usuario_id: number
@@ -43,6 +44,26 @@ interface FilaTurno extends RowDataPacket {
   direccion: string | null
   registrado_por_id: number | null
   usuario_nombre?: string | null
+}
+
+interface FilaTurno extends RowDataPacket, DatosTurno {}
+
+/**
+ * Fila de «Mis turnos»: evento y turno en la MISMA fila. Las columnas que se llaman igual en
+ * `evento` y en `servidor_evento` (id, latitud, longitud, direccion) llevan alias en el turno;
+ * sin ellos el turno pisaba al evento y el enlace llevaba a otro evento (o a ninguno).
+ */
+interface FilaMiTurno extends FilaEvento {
+  turno_id: number
+  turno_usuario_id: number
+  funcion: string | null
+  confirmado: number | boolean
+  confirmado_en: Date | string | null
+  llego_en: Date | string | null
+  turno_latitud: string | number | null
+  turno_longitud: string | number | null
+  turno_direccion: string | null
+  registrado_por_id: number | null
 }
 
 const COLUMNAS_EVENTO = `e.id, e.ministerio_id, e.nombre, e.descripcion, e.fecha, e.hora_llegada,
@@ -89,7 +110,7 @@ function aEvento(fila: FilaEvento): Evento {
   }
 }
 
-function aTurno(fila: FilaTurno): TurnoEvento {
+function aTurno(fila: DatosTurno): TurnoEvento {
   return {
     id: fila.id,
     eventoId: fila.evento_id,
@@ -449,9 +470,11 @@ export async function listarMisTurnos(
   usuarioId: number,
   opciones: { desde?: string } = {},
 ): Promise<TurnoConEvento[]> {
-  const filas = await consultar<FilaEvento & FilaTurno>(
+  const filas = await consultar<FilaMiTurno>(
     `SELECT ${COLUMNAS_EVENTO}, m.nombre AS ministerio_nombre,
-            ${COLUMNAS_TURNO}, s.usuario_id AS usuario_id
+            s.id AS turno_id, s.usuario_id AS turno_usuario_id, s.funcion, s.confirmado,
+            s.confirmado_en, s.llego_en, s.latitud AS turno_latitud, s.longitud AS turno_longitud,
+            s.direccion AS turno_direccion, s.registrado_por_id
        FROM servidor_evento s
        JOIN evento e ON e.id = s.evento_id
        JOIN ministerio m ON m.id = e.ministerio_id
@@ -462,7 +485,22 @@ export async function listarMisTurnos(
     opciones.desde ? [usuarioId, opciones.desde] : [usuarioId],
   )
 
-  return filas.map((fila) => ({ evento: aEvento(fila), turno: aTurno(fila) }))
+  return filas.map((fila) => ({
+    evento: aEvento(fila),
+    turno: aTurno({
+      id: fila.turno_id,
+      evento_id: fila.id,
+      usuario_id: fila.turno_usuario_id,
+      funcion: fila.funcion,
+      confirmado: fila.confirmado,
+      confirmado_en: fila.confirmado_en,
+      llego_en: fila.llego_en,
+      latitud: fila.turno_latitud,
+      longitud: fila.turno_longitud,
+      direccion: fila.turno_direccion,
+      registrado_por_id: fila.registrado_por_id,
+    }),
+  }))
 }
 
 /** Fecha de hoy en el reloj de la base (para comparar con `evento.fecha`). */

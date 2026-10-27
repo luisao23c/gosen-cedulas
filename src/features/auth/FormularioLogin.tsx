@@ -14,8 +14,8 @@ import {
 } from '@mui/material'
 import MailOutlinedIcon from '@mui/icons-material/MailOutlined'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-import VisibilityIcon from '@mui/icons-material/Visibility'
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
+import VisibilityIcon from '@mui/icons-material/VisibilityOutlined'
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOffOutlined'
 import { iniciarSesion } from '@/features/auth/acciones'
 import { ESTADO_INICIAL, type EstadoFormulario } from '@/features/tipos'
 

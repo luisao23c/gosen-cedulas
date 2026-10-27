@@ -10,8 +10,8 @@ import {
   TextField,
   Tooltip,
 } from '@mui/material'
-import EditIcon from '@mui/icons-material/Edit'
-import AddIcon from '@mui/icons-material/Add'
+import EditIcon from '@mui/icons-material/EditOutlined'
+import AddIcon from '@mui/icons-material/AddOutlined'
 import { guardarMinisterio, editarMinisterio } from '@/features/ministerio/acciones'
 import type { AccionFormulario, OpcionUsuario } from '@/features/tipos'
 import AccionPrincipal from '@/components/AccionPrincipal'

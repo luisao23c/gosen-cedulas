@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, type ReactElement, type ReactNode } from 'react'
+import { forwardRef, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import {
   Alert,
   AppBar,
@@ -18,7 +18,7 @@ import {
   useTheme,
 } from '@mui/material'
 import type { TransitionProps } from '@mui/material/transitions'
-import CloseIcon from '@mui/icons-material/Close'
+import CloseIcon from '@mui/icons-material/CloseOutlined'
 import { medidas, radios, sombras } from '@/theme/theme'
 
 /** Transición de pantalla completa en móvil: sube desde abajo, como una hoja. */
@@ -51,6 +51,7 @@ export default function DialogoFormulario({
   etiquetaGuardar = 'Guardar',
   anchoMaximo = 'sm',
   accionesExtra,
+  completa = false,
   children,
 }: {
   abierto: boolean
@@ -66,10 +67,37 @@ export default function DialogoFormulario({
   anchoMaximo?: 'sm' | 'md' | 'lg'
   /** Botón extra a la izquierda del pie (p. ej. «Eliminar rol») */
   accionesExtra?: ReactNode
+  /**
+   * Teléfono: por defecto el formulario es una HOJA INFERIOR (sube desde abajo, deja ver la
+   * pantalla detrás y se cierra deslizando, como en una app nativa). Los formularios largos
+   * o con mapa piden `completa` y ocupan toda la pantalla.
+   */
+  completa?: boolean
   children: ReactNode
 }) {
   const tema = useTheme()
   const esMovil = useMediaQuery(tema.breakpoints.down('md'))
+
+  // Hoja inferior: se cierra arrastrando la cabecera hacia abajo (el gesto que toda app nativa ofrece)
+  const [arrastre, setArrastre] = useState(0)
+  const inicioArrastre = useRef<number | null>(null)
+  const gestoDeHoja =
+    esMovil && !completa
+      ? {
+          onTouchStart: (evento: React.TouchEvent) => {
+            inicioArrastre.current = evento.touches[0].clientY
+          },
+          onTouchMove: (evento: React.TouchEvent) => {
+            if (inicioArrastre.current == null) return
+            setArrastre(Math.max(0, evento.touches[0].clientY - inicioArrastre.current))
+          },
+          onTouchEnd: () => {
+            inicioArrastre.current = null
+            if (arrastre > 110) alCerrar()
+            setArrastre(0)
+          },
+        }
+      : {}
 
   const botonGuardar = (tamanoGrande: boolean) => (
     <Button
@@ -146,15 +174,37 @@ export default function DialogoFormulario({
     <Dialog
       open={abierto}
       onClose={alCerrar}
-      fullScreen={esMovil}
+      fullScreen={esMovil && completa}
       fullWidth
       maxWidth={anchoMaximo}
       scroll="paper"
       slots={esMovil ? { transition: SubeDesdeAbajo } : undefined}
-      slotProps={{ paper: { sx: { boxShadow: sombras.alta } } }}
+      slotProps={{
+        paper: {
+          sx: {
+            boxShadow: sombras.alta,
+            ...(esMovil && !completa
+              ? {
+                  position: 'fixed',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  m: 0,
+                  width: '100%',
+                  maxWidth: '100%',
+                  maxHeight: '92dvh',
+                  borderRadius: `${radios.extra}px ${radios.extra}px 0 0`,
+                  transform: arrastre > 0 ? `translateY(${arrastre}px)` : undefined,
+                  transition: arrastre > 0 ? 'none' : undefined,
+                }
+              : {}),
+          },
+        },
+      }}
     >
       {esMovil ? (
         <AppBar
+          {...gestoDeHoja}
           position="static"
           elevation={0}
           sx={{
@@ -194,7 +244,7 @@ export default function DialogoFormulario({
         </AppBar>
       ) : (
         <Box sx={{ px: { sm: 3 }, pt: 2.5, pb: 0.5 }}>
-          <Typography variant="h5" component="h2">
+          <Typography variant="h4" component="h2">
             {titulo}
           </Typography>
           {descripcion ? (

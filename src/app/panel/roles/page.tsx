@@ -1,5 +1,5 @@
 import { Box, Chip, Stack, Typography } from '@mui/material'
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettingsOutlined'
 import { exigirRol } from '@/lib/auth/guardas'
 import { puede, puedeOtorgar } from '@/lib/auth/permisos'
 import { listarRoles } from '@/lib/db/roles'
@@ -117,7 +117,7 @@ export default async function PaginaRoles() {
 
       <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-          <Typography variant="h5" component="h2">
+          <Typography variant="h4" component="h2">
             ¿Qué puede hacer cada rol?
           </Typography>
           <Chip size="small" label="Vista de conjunto" color="primary" />

@@ -2,7 +2,7 @@ import { Box, Paper, Stack, Typography } from '@mui/material'
 import CheckCircleOutlineOutlinedIcon from '@mui/icons-material/CheckCircleOutlineOutlined'
 import LogoGosen from '@/components/LogoGosen'
 import FormularioLogin from '@/features/auth/FormularioLogin'
-import { degradados, radios, sombras } from '@/theme/theme'
+import { colores, degradados, radios, sombras } from '@/theme/theme'
 
 export const metadata = { title: 'Entrar · Gosen' }
 
@@ -47,7 +47,7 @@ export default function PaginaLogin() {
           maxWidth: 620,
           p: 6,
           backgroundImage: degradados.marca,
-          color: 'primary.contrastText',
+          color: colores.textoSobreMarca,
         }}
       >
         <Marca sobreMarca />
@@ -102,7 +102,7 @@ export default function PaginaLogin() {
             <Marca />
           </Box>
 
-          <Typography variant="h5" component="h2" sx={{ mb: 2.5 }}>
+          <Typography variant="h4" component="h2" sx={{ mb: 2.5 }}>
             Iniciar sesión
           </Typography>
 

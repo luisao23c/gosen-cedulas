@@ -14,9 +14,9 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import MyLocationIcon from '@mui/icons-material/MyLocation'
-import LoginIcon from '@mui/icons-material/Login'
-import ReplayIcon from '@mui/icons-material/Replay'
+import MyLocationIcon from '@mui/icons-material/MyLocationOutlined'
+import LoginIcon from '@mui/icons-material/LoginOutlined'
+import ReplayIcon from '@mui/icons-material/ReplayOutlined'
 import { marcarLlegada } from '@/features/ministerio/eventos'
 import { ESTADO_INICIAL } from '@/features/tipos'
 import { formatearFechaConDia } from '@/lib/fechas'

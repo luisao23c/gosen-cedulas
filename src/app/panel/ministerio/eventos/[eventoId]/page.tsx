@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { Box, Chip, LinearProgress, Paper, Stack, Typography } from '@mui/material'
-import EventIcon from '@mui/icons-material/Event'
-import PlaceIcon from '@mui/icons-material/Place'
+import EventIcon from '@mui/icons-material/EventOutlined'
+import PlaceIcon from '@mui/icons-material/PlaceOutlined'
 import { exigirRol } from '@/lib/auth/guardas'
 import { puede, rolPuede } from '@/lib/auth/permisos'
 import { buscarEvento, listarAsignables, listarTurnos } from '@/lib/db/eventos'
@@ -217,15 +217,23 @@ export default async function PaginaEvento({
 
       <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 } }}>
         <Stack spacing={2}>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
-            <PlaceIcon fontSize="small" color="primary" />
-            <Typography variant="subtitle1">
-              {punto.direccion ?? 'Sin ubicación marcada: la llegada se mide solo por la hora'}
-            </Typography>
+          <Stack spacing={1}>
+            {/* El pin y la dirección van juntos: si cada uno fuera un elemento suelto de la fila, el pin quedaba solo en su renglón */}
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
+              <PlaceIcon fontSize="small" color="primary" sx={{ mt: 0.25, flexShrink: 0 }} />
+              <Typography variant="subtitle1">
+                {punto.direccion ?? 'Sin ubicación marcada: la llegada se mide solo por la hora'}
+              </Typography>
+            </Stack>
             {evento.horaLlegada ? (
-              <Chip size="small" color="primary" label={`Deben estar a las ${evento.horaLlegada}`} />
+              <Chip
+                size="small"
+                color="primary"
+                label={`Deben estar a las ${evento.horaLlegada}`}
+                sx={{ alignSelf: 'flex-start' }}
+              />
             ) : (
-              <Chip size="small" variant="outlined" label="Sin hora de llegada" />
+              <Chip size="small" variant="outlined" label="Sin hora de llegada" sx={{ alignSelf: 'flex-start' }} />
             )}
           </Stack>
 

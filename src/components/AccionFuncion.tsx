@@ -1,7 +1,7 @@
 'use client'
 
 import { IconButton, Stack, TextField, Tooltip, Typography } from '@mui/material'
-import BadgeIcon from '@mui/icons-material/Badge'
+import BadgeIcon from '@mui/icons-material/BadgeOutlined'
 import { asignarFuncion } from '@/features/ministerio/eventos'
 import DialogoFormulario from '@/components/DialogoFormulario'
 import { useFormularioDialogo } from '@/components/useFormularioDialogo'

@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Chip, Stack, Typography } from '@mui/material'
+import { alBorde } from '@/theme/theme'
 
 /**
  * Filtros de la lista de usuarios (estilo chips, como en Flutter).
@@ -34,17 +35,16 @@ function Grupo({
     <Stack
       direction="row"
       spacing={1}
-      sx={{
+      sx={(tema) => ({
+        // El scroll horizontal se aprovecha hasta el borde de la pantalla
+        ...alBorde(tema),
         alignItems: 'center',
         overflowX: 'auto',
-        // El scroll horizontal se aprovecha hasta el borde de la pantalla
-        mx: { xs: -2, sm: -3, md: 0 },
-        px: { xs: 2, sm: 3, md: 0 },
         scrollbarWidth: 'none',
         '&::-webkit-scrollbar': { display: 'none' },
         flexWrap: { md: 'wrap' },
         rowGap: { md: 1 },
-      }}
+      })}
     >
       <Typography variant="caption" color="text.secondary" sx={{ minWidth: 44, flexShrink: 0 }}>
         {titulo}

@@ -10,8 +10,8 @@ import {
   TextField,
   Tooltip,
 } from '@mui/material'
-import EditIcon from '@mui/icons-material/Edit'
-import PersonAddIcon from '@mui/icons-material/PersonAdd'
+import EditIcon from '@mui/icons-material/EditOutlined'
+import PersonAddIcon from '@mui/icons-material/PersonAddOutlined'
 import { guardarUsuario, editarUsuario } from '@/features/usuarios/acciones'
 import type {
   AccionFormulario,

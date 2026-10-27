@@ -43,6 +43,17 @@ export async function hashContrasena(clave: string): Promise<string> {
   return `scrypt$${n}$${r}$${p}$${salt.toString('base64url')}$${derivada.toString('base64url')}`
 }
 
+/**
+ * Hash de mentira con el mismo costo que uno real. Cuando el correo no existe se verifica
+ * contra este para que la respuesta tarde lo mismo: si no, el tiempo delataría qué correos
+ * están registrados.
+ */
+const HASH_FALSO = `scrypt$16384$8$1$${'A'.repeat(22)}$${'A'.repeat(86)}`
+
+export async function gastarTiempoDeVerificacion(clave: string): Promise<void> {
+  await verificarContrasena(clave, HASH_FALSO).catch(() => false)
+}
+
 /** Compara una contraseña en claro contra el hash guardado. */
 export async function verificarContrasena(clave: string, almacenada: string): Promise<boolean> {
   const partes = almacenada.split('$')

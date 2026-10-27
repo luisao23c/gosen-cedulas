@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Box, Chip } from '@mui/material'
 import { rutaConMinisterio } from '@/lib/ministerio'
+import { alBorde } from '@/theme/theme'
 
 /** El tema suaviza los chips de color; el filtro elegido tiene que verse sin dudar. */
 const estiloActivo = {
@@ -34,17 +35,16 @@ export default function FiltroMinisterio({
     <Box
       role="group"
       aria-label="Filtrar por ministerio"
-      sx={{
+      sx={(tema) => ({
+        // Llega hasta el borde de la pantalla en móvil, como las pestañas
+        ...alBorde(tema),
         display: 'flex',
         gap: 1,
         overflowX: 'auto',
-        // Llega hasta el borde de la pantalla en móvil, como las pestañas
-        mx: { xs: -2, sm: -3, md: 0 },
-        px: { xs: 2, sm: 3, md: 0 },
         py: 0.5,
         scrollbarWidth: 'none',
         '&::-webkit-scrollbar': { display: 'none' },
-      }}
+      })}
     >
       <Chip
         component={Link}

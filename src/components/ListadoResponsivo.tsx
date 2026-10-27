@@ -20,7 +20,6 @@ import {
   Divider,
   IconButton,
   InputAdornment,
-  Paper,
   Table,
   TableBody,
   TableCell,
@@ -31,12 +30,11 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import SearchIcon from '@mui/icons-material/Search'
-import ClearIcon from '@mui/icons-material/Clear'
-import MoreVertIcon from '@mui/icons-material/MoreVert'
-import SearchOffIcon from '@mui/icons-material/SearchOff'
-import InboxOutlinedIcon from '@mui/icons-material/InboxOutlined'
-import { colores, medidas, movimiento, radios, sombras } from '@/theme/theme'
+import SearchIcon from '@mui/icons-material/SearchOutlined'
+import ClearIcon from '@mui/icons-material/ClearOutlined'
+import MoreVertIcon from '@mui/icons-material/MoreVertOutlined'
+import EstadoVacio from '@/components/EstadoVacio'
+import { colores, medidas, movimiento, sombras } from '@/theme/theme'
 
 /**
  * ★ COMPONENTE OBLIGATORIO DE LISTADOS (ver AGENTS.md §3.6) ★
@@ -83,6 +81,11 @@ export interface CeldaListado {
      */
     soloTabla?: boolean
   }
+  /**
+   * Solo para la tabla de escritorio: en la lista del teléfono la celda no entra en el
+   * subtítulo (datos largos o secundarios, p. ej. la dirección completa).
+   */
+  soloTabla?: boolean
   /** En móvil antepone la etiqueta («Ramas: Ver · Crear»): para datos ambiguos sin ella */
   conEtiqueta?: boolean
 }
@@ -93,6 +96,13 @@ export interface FilaListado {
   href?: string
   celdas: CeldaListado[]
   acciones?: ReactNode
+  /**
+   * La acción que MÁS toca hacer en esta fila, con su verbo («Recibir», «Prestar»…).
+   * En el teléfono se pinta dentro de la fila, siempre visible: antes todo estaba detrás
+   * de un deslizamiento o de un ⋮ y nadie sabía que existía. Las demás acciones siguen
+   * en el panel que se desliza; en escritorio las ofrece la columna de acciones.
+   */
+  accionVisible?: ReactNode
   /**
    * Distintivo circular al inicio de la fila (iniciales de una persona).
    * Da un punto de anclaje visual y hace la lista reconocible de un vistazo.
@@ -147,42 +157,7 @@ function Vacio({
   accion?: ReactNode
   icono?: ReactNode
 }) {
-  return (
-    <Paper
-      variant="outlined"
-      sx={{
-        p: { xs: 3, sm: 4 },
-        textAlign: 'center',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 1.5,
-        bgcolor: 'background.paper',
-      }}
-    >
-      <Box
-        aria-hidden
-        sx={{
-          display: 'grid',
-          placeItems: 'center',
-          width: 48,
-          height: 48,
-          borderRadius: `${radios.pill}px`,
-          bgcolor: 'primary.light',
-          color: 'primary.dark',
-        }}
-      >
-        {icono ?? (buscando ? <SearchOffIcon /> : <InboxOutlinedIcon />)}
-      </Box>
-      <Typography variant="subtitle1" component="p" sx={{ color: 'text.primary' }}>
-        {buscando ? 'Sin resultados' : 'Nada por aquí todavía'}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 460 }}>
-        {mensaje}
-      </Typography>
-      {accion}
-    </Paper>
-  )
+  return <EstadoVacio mensaje={mensaje} buscando={buscando} accion={accion} icono={icono} />
 }
 
 /** Navega al detalle al tocar la fila, salvo que el toque fuera en un botón o enlace. */
@@ -221,7 +196,7 @@ function ContenidoFila({ fila }: { fila: FilaListado }) {
 
   // Detalle: solo valores (la etiqueta sobra casi siempre y quita sitio), sin los vacíos «—»
   const subtitulo = fila.celdas
-    .filter((celda) => !celda.destacado && !celda.chip && celda.texto !== '—')
+    .filter((celda) => !celda.destacado && !celda.chip && !celda.soloTabla && celda.texto !== '—')
     .map((celda) => (celda.conEtiqueta ? `${celda.etiqueta}: ${celda.texto}` : celda.texto))
     .join(' · ')
 
@@ -264,11 +239,12 @@ function ContenidoFila({ fila }: { fila: FilaListado }) {
               size="small"
               label={chip.etiqueta}
               color={chip.tono}
-              variant={chip.tono === 'success' ? 'filled' : 'outlined'}
+              variant="filled"
             />
           ))}
         </Box>
       ) : null}
+      {fila.accionVisible ? <Box sx={{ mt: 1 }}>{fila.accionVisible}</Box> : null}
     </Box>
   )
 }
@@ -431,6 +407,10 @@ function FilaDeslizable({
       <Box
         aria-hidden={!abierta}
         sx={{
+          // Cerrado, el panel se oculta del todo (no solo «debajo»): sin un filo de 1 px asomando por el borde y sin
+          // botones enfocables con el teclado que no se ven. Se retira con retraso para no parpadear al cerrar.
+          visibility: x === 0 && !abierta ? 'hidden' : 'visible',
+          transition: x === 0 && !abierta ? `visibility 0s linear ${movimiento.normal}` : 'visibility 0s',
           position: 'absolute',
           top: 0,
           right: 0,
@@ -499,7 +479,7 @@ function contenidoTabla(celda: CeldaListado): ReactNode {
         size="small"
         label={celda.chip.etiqueta}
         color={celda.chip.tono}
-        variant={celda.chip.tono === 'success' ? 'filled' : 'outlined'}
+        variant="filled"
       />
     )
   }
@@ -519,8 +499,17 @@ export default function ListadoResponsivo({
   mensajeVacio,
   placeholderBuscador = 'Buscar…',
   iconoVacio,
+  accionVacio,
+  filtros = [],
   principal = true,
 }: {
+  /** Siguiente paso del estado vacío (p. ej. el botón «Agregar integrante») */
+  accionVacio?: ReactNode
+  /**
+   * Filtros por columna: cada uno es la `clave` de una celda. Las opciones salen de los valores que
+   * tienen las filas (el chip si lo hay, si no el texto), así nunca ofrecen algo que no existe.
+   */
+  filtros?: { clave: string; etiqueta: string }[]
   filas: FilaListado[]
   /** Orden y nombre de columnas (también se usan de etiqueta en la fila móvil) */
   etiquetas: string[]
@@ -560,20 +549,43 @@ export default function ListadoResponsivo({
     return () => window.removeEventListener('keydown', alPulsar)
   }, [principal])
 
+  const [seleccion, setSeleccion] = useState<Record<string, string>>({})
+
+  const valorDe = (fila: FilaListado, clave: string) => {
+    const celda = fila.celdas.find((candidata) => candidata.clave === clave)
+    return celda ? (celda.chip?.etiqueta ?? celda.texto) : ''
+  }
+
+  /** Opciones de cada filtro, tomadas de las filas (sin repetir y sin vacíos). */
+  const opciones = useMemo(
+    () =>
+      Object.fromEntries(
+        filtros.map(({ clave }) => [
+          clave,
+          [...new Set(filas.map((fila) => valorDe(fila, clave)).filter(Boolean))].slice(0, 12),
+        ]),
+      ),
+    [filas, filtros],
+  )
+
   const filtradas = useMemo(() => {
     const consulta = normalizar(busqueda.trim())
-    if (!consulta) return filas
-    return filas.filter((fila) =>
-      fila.celdas.some(
+    return filas.filter((fila) => {
+      const cumpleFiltros = Object.entries(seleccion).every(
+        ([clave, valor]) => !valor || valorDe(fila, clave) === valor,
+      )
+      if (!cumpleFiltros) return false
+      if (!consulta) return true
+      return fila.celdas.some(
         (celda) =>
           normalizar(celda.texto).includes(consulta) ||
           (celda.chip ? normalizar(celda.chip.etiqueta).includes(consulta) : false),
-      ),
-    )
-  }, [filas, busqueda])
+      )
+    })
+  }, [filas, busqueda, seleccion])
 
   // Sin filas en origen: mensaje base (el buscador no tendría nada que filtrar)
-  if (filas.length === 0) return <Vacio mensaje={mensajeVacio} icono={iconoVacio} />
+  if (filas.length === 0) return <Vacio mensaje={mensajeVacio} icono={iconoVacio} accion={accionVacio} />
 
   const buscador = (
     <Box
@@ -639,6 +651,43 @@ export default function ListadoResponsivo({
           </>
         ) : null}
       </Typography>
+
+      {/* Filtros por columna: una fila de chips por filtro, que se desliza de lado en el teléfono */}
+      {filtros.map(({ clave, etiqueta }) =>
+        (opciones[clave]?.length ?? 0) > 1 ? (
+          <Box
+            key={clave}
+            role="group"
+            aria-label={`Filtrar por ${etiqueta}`}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              width: '100%',
+              overflowX: 'auto',
+              scrollbarWidth: 'none',
+              '&::-webkit-scrollbar': { display: 'none' },
+            }}
+          >
+            <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0, minWidth: 52 }}>
+              {etiqueta}
+            </Typography>
+            {['', ...opciones[clave]].map((opcion) => {
+              const activa = (seleccion[clave] ?? '') === opcion
+              return (
+                <Chip
+                  key={opcion || 'todos'}
+                  label={opcion || 'Todos'}
+                  color={activa ? 'primary' : 'default'}
+                  variant={activa ? 'filled' : 'outlined'}
+                  onClick={() => setSeleccion((previa) => ({ ...previa, [clave]: opcion }))}
+                  sx={{ flexShrink: 0 }}
+                />
+              )
+            })}
+          </Box>
+        ) : null,
+      )}
     </Box>
   )
 
@@ -648,8 +697,15 @@ export default function ListadoResponsivo({
       buscando
       mensaje={`Nada coincide con «${busqueda}». Prueba con otra palabra o revisa los filtros.`}
       accion={
-        <Button variant="outlined" size="small" onClick={() => setBusqueda('')}>
-          Limpiar búsqueda
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={() => {
+            setBusqueda('')
+            setSeleccion({})
+          }}
+        >
+          Limpiar búsqueda y filtros
         </Button>
       }
     />
@@ -663,7 +719,7 @@ export default function ListadoResponsivo({
           {esNuevoGrupo(filtradas, indice) ? (
             <CabeceraGrupo etiqueta={fila.grupo as string} />
           ) : indice > 0 ? (
-            <Divider />
+            <Divider sx={{ ml: fila.avatar ? '72px' : 2 }} />
           ) : null}
           {fila.acciones ? (
             <FilaDeslizable
@@ -689,7 +745,7 @@ export default function ListadoResponsivo({
               <TableCell key={etiqueta}>{etiqueta}</TableCell>
             ))}
             {accionesCabecera ? (
-              <TableCell align="right" sx={{ ...columnaAcciones, bgcolor: 'action.hover' }}>
+              <TableCell align="right" sx={{ ...columnaAcciones, bgcolor: colores.superficieAlt }}>
                 Acciones
               </TableCell>
             ) : null}

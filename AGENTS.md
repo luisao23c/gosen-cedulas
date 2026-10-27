@@ -2,7 +2,9 @@
 
 Guía de trabajo para agentes y colaboradores. **Síguela tal cual** al editar este repositorio.
 
-Antes de empezar: lee [README.md](README.md) (visión, dominio y roadmap) y [MEMORY.md](MEMORY.md) (contexto, modelo de datos y decisiones abiertas).
+Antes de empezar: lee [README.md](README.md) (visión, dominio y roadmap), [MEMORY.md](MEMORY.md) (contexto, modelo de datos y decisiones abiertas) y [DISENO.md](DISENO.md) (reglas de diseño: tipografía, color, iconos, componentes e interacción).
+
+**También lee [DESIGN.md](DESIGN.md)** (referencia de diseño añadida por el usuario: lienzo cálido, jerarquía editorial con serif en títulos, un solo color de acento escaso, superficies que alternan claro/oscuro, radios y espaciado jerárquicos, elevación por bloques de color y no por sombras). Úsala como guía de criterio en toda pantalla nueva. Los **valores concretos** (colores, fuentes, radios) siguen saliendo de `src/theme/theme.ts` y de la marca de Gosén (Manual de Identidad): si algo de `DESIGN.md` choca con ella (p. ej. el coral y Copernicus/StyreneB frente a Cherry Mahogany y Minion Pro/Creato Display), **decisión del usuario (2026-10-27): los colores y las tipografías son SIEMPRE los de Gosén (Manual de Identidad, en `theme.ts`); los de `DESIGN.md` (coral, Copernicus, StyreneB, crema) NO se usan.** De `DESIGN.md` se toman solo los principios (jerarquía, ritmo, espaciado, radios por nivel, elevación). No toques la paleta ni las tipografías salvo que el usuario lo pida expresamente.
 
 ---
 
@@ -17,7 +19,7 @@ Administrador  →  Rama  →  Célula  →  Integrante
 
 ---
 
-## 2. Estado actual (2026-10-15)
+## 2. Estado actual (2026-10-27)
 
 | Item | Estado |
 | --- | --- |
@@ -26,14 +28,17 @@ Administrador  →  Rama  →  Célula  →  Integrante
 | Scaffold del proyecto Next | ✅ Next 16.4 + MUI 9.4 |
 | Base de datos | ✅ MySQL 8.4.6 portátil en 3306 (si no responde, ver [MEMORY.md §11](MEMORY.md#11-entorno-y-cómo-verificar)) |
 | Repositorio Git | ❌ sin inicializar |
-| typecheck / lint / build | ✅ pasan (última verificación: 2026-10-10) |
+| typecheck / lint / test / build | ✅ pasan (última verificación: 2026-10-27 · 185 pruebas, 12 archivos) |
 | Ubicación por mapa (Leaflet) y registro por ubicación (rol Lobby) | ✅ (ver [MEMORY.md §7.2](MEMORY.md#72-ubicación-en-el-mapa-y-registro-por-ubicación-2026-10-10)) |
 | Pase de lista (por fecha, en la ficha de la célula) y edición/baja desde los listados | ✅ (ver [MEMORY.md §7.3](MEMORY.md#73-pase-de-lista-mapa-por-defecto-en-torreón-y-bajas-desde-los-listados-2026-10-10)) |
 | Cumpleaños próximos (`/panel/cumpleanos`, ventana configurable, resumen en Inicio) | ✅ (ver [MEMORY.md §7.4](MEMORY.md#74-cumpleaños-próximos-2026-10-10)) |
 | Módulo de ministerios (`/panel/ministerio`: equipo, préstamos, eventos, confirmación y checada de llegada) | ✅ (ver [MEMORY.md §7.7](MEMORY.md#77-módulo-de-ministerios-2026-10-15)) |
 | Texto «cédula» → «célula» en toda la app | ✅ (`npm run db:migrar-celulas` renombra la tabla antigua) |
 | Mapa por defecto | ✅ Torreón, Coahuila (`mapa.centro` en `theme.ts`) |
-| Tests automatizados | ❌ aún no existen |
+| Tests automatizados | ✅ vitest: `pruebas/unidad` (lógica pura) y `pruebas/integracion` (MySQL `gosen_test`, se saltan solas si no hay base) · CI en `.github/workflows/ci.yml` (aún no se ha ejecutado en GitHub: el repositorio no se ha subido) |
+| Modo claro / oscuro / auto | ✅ ver [DISENO.md §9](DISENO.md) · contraste AA comprobado por pruebas (`pruebas/unidad/tema.test.ts`) |
+| Sin conexión | ⚠️ solo el **armazón** (`public/sw.js` + `/offline` + aviso en el panel): no guarda ni reenvía datos. Lógica probada en `sw.test.ts`; el registro del service worker **no** se pudo ejercitar en el navegador integrado (no admite service workers) |
+| Manual de uso | ✅ [docs/manual/MANUAL.md](docs/manual/MANUAL.md) con 28 capturas (móvil, base de demostración `gosen_demo`; sin video) |
 
 Cada terminal necesita:
 
@@ -64,6 +69,13 @@ Sin ese paso, `npm`/`node` no se encuentran.
 - Tamaños de texto: variantes de `theme.typography` o el valor por defecto del componente en el tema
   (p. ej. `MuiAvatar` fija el tamaño de las iniciales). Nunca `fontSize: '0.85rem'` en un componente.
 - `globals.css` no lleva colores ni `font-family`: solo reset/mínimos.
+- **Modo claro y oscuro**: `colores` (de `theme.ts`) son **referencias a variables CSS** (`var(--g-fondo)`…), no hex: cambian
+  solas con el modo y se usan dentro de cualquier valor de CSS (`border: \`1px solid ${colores.borde}\``). Para operar con un
+  color en JavaScript (mezclar, aclarar) o para algo que no entiende `var()` (manifest, `themeColor`) están los valores reales
+  en `paletaReal.claro` / `paletaReal.oscuro`. Un token de color nuevo se agrega a **`VALORES_CLAROS` y a `VALORES_OSCUROS`**
+  (TypeScript exige las mismas claves). El texto sobre el degradado de marca es `colores.textoSobreMarca`, **no**
+  `primary.contrastText` (en oscuro este último es oscuro). El logo cambia de versión solo (`LogoGosen`). El selector de
+  apariencia vive en `PanelChrome` (`SelectorApariencia`); MUI guarda la elección y la aplica antes de pintar.
 
 ### 3.2 Idioma
 - **Dominio y UI en español**: `Rama`, `Celula`, `Integrante`, `Asistencia`, `pasarLista`, `cumpleanos`.
@@ -117,6 +129,7 @@ Sin ese paso, `npm`/`node` no se encuentran.
   antes decía: **Un solo FAB por pantalla**: `AccionPrincipal` lo fija abajo a la derecha, así que dos acciones
   flotantes se enciman en el mismo punto y la de abajo queda inalcanzable al tacto. La segunda acción
   va como botón normal de tamaño táctil dentro de su tarjeta (así lo hace `PaseDeLista`).
+- **Barra superior con contexto**: en el teléfono `AccionPrincipal` se registra en la barra (un «+» arriba a la derecha) y `EncabezadoPagina` le da su título y el destino del «volver» (`components/CabeceraApp.tsx`). Los formularios cortos son **hojas inferiores** (`DialogoFormulario`; `completa` solo para los largos o con mapa). Ver [DISENO.md §8](DISENO.md).
 - El corte es `md` del tema (MUI por defecto: 900 px) y sale siempre de `theme.breakpoints`:
   `useMediaQuery(theme.breakpoints.*)` cuando hay que medir en JavaScript, y `display: { xs, md }`
   cuando basta con el CSS (así lo hacen `ListadoResponsivo` y `PanelChrome`). **Nada de `768px`
@@ -170,6 +183,33 @@ Sin ese paso, `npm`/`node` no se encuentran.
 - Toda ruta que lee la sesión necesita `export const instant = false` **en la página** (Next 16).
 - Las mutaciones vía Server Actions con Zod; tras guardar, `router.refresh()` en el cliente.
 
+### 3.9 Seguridad y pruebas
+- **El secreto de sesión sale de `lib/entorno.ts` (`secretoSesion()`)**, nunca de `process.env` suelto. En producción
+  exige `SECRETO_SESION` propio de 32+ caracteres y **falla cerrado** (el secreto de ejemplo está en el repositorio:
+  usarlo permitiría fabricar sesiones). El token vive en `lib/auth/token.ts` (lógica pura, con pruebas).
+- **Inicio de sesión**: límite de intentos por correo y por IP (`lib/auth/limite.ts` + `proteccion.ts`, contadores en la
+  tabla `intento_login`) y tiempo de respuesta igual exista o no el correo (`gastarTiempoDeVerificacion`). Si la tabla
+  no existe, el login sigue sin límite y avisa: no rompas el acceso por una migración pendiente.
+- Contraseñas nuevas: 10+ caracteres con letras y números (`validaciones.ts`). El login no exige esa regla.
+- Cabeceras de seguridad y CSP en `next.config.ts` (CSP solo en producción). Si añades un origen externo (mapas,
+  fuentes, analítica) hay que **declararlo ahí** o el navegador lo bloqueará.
+- **Toda lógica nueva lleva prueba** en `pruebas/` (unidad si es pura; integración si toca SQL, con `describe.skipIf(!baseLista)`).
+  Las pruebas de integración usan `gosen_test` y se niegan a correr contra otra base. Si una consulta junta columnas de dos
+  tablas con el mismo nombre (`id`, `latitud`…), **ponles alias**: `listarMisTurnos` devolvía el id del turno como si fuera el del evento.
+- Salud: `GET /api/salud` (pública, sin detalles). Errores del servidor: una línea JSON por error (`instrumentation.ts`); la pantalla de
+  error muestra el `digest` como «Código del error».
+- **Sin conexión** (`public/sw.js`): el service worker guarda SOLO archivos estáticos (JS/CSS/fuentes/iconos/logo) y la página
+  `/offline`. **Nunca** guarda HTML del panel, respuestas RSC ni acciones del servidor (llevan datos personales y se verían
+  tras cerrar sesión): `estrategia()` decide qué se toca y está probada. Si añades rutas con datos, no las metas en el caché.
+  Al cambiar `sw.js` sube `VERSION`. No hay cola de captura sin red: el aviso `AvisoSinConexion` lo dice con honestidad.
+- **Patrones de interfaz (2026-10-27)**: barra inferior **flotante** en móvil (píldora, `medidas.margenNavFlotante`, `sombras.alta`);
+  menú lateral **colapsable** en escritorio (`useMenuCompacto`, `medidas.anchoMenuCompacto`, se recuerda en el navegador);
+  todo estado vacío sale de `EstadoVacio` (no armes uno a mano); `ListadoResponsivo` acepta `filtros` por columna (por la `clave` de
+  la celda; solo aparecen si hay más de una opción) y `accionVacio`; el Inicio usa rejilla tipo bento para las cifras.
+- **Márgenes negativos dentro de un `Stack` no funcionan** (el `Stack` reinicia los márgenes de sus hijos): para filas que llegan
+  al borde de la pantalla usa `alBorde` del tema, no `mx: -2`.
+- `npm run lint` ignora `.claude/**`, `.github/skills/**` y `respaldos/**` (scripts de terceros y volcados, no código de la app).
+
 ---
 
 ## 4. Estructura
@@ -218,6 +258,15 @@ scripts/crear-esquema.mjs # npm run db:setup (esquema + datos de prueba)
 | `npm run db:migrar-celulas` | Renombra la tabla antigua `cedula` a `celula` (idempotente) |
 | `npm run iconos` | Regenera los íconos de la PWA y el logo claro desde `public/marca/gosen-logo.png` |
 | `npm run db:migrar-ministerio` | Crea `ministerio`, `equipo`, `prestamo`, `evento` y `servidor_evento` (idempotente) |
+| `npm test` | Pruebas automáticas (vitest). Las de integración necesitan `npm run db:preparar-pruebas` una vez |
+| `npm run db:preparar-pruebas` | Crea/recrea la base **`gosen_test`** (nunca toca `gosen`; se niega a correr contra un host remoto) |
+| `npm run db:migrar-seguridad` | Crea `intento_login` (límite de intentos de inicio de sesión; idempotente) |
+| `npm run db:migrar-todo` | Ejecuta **todas** las migraciones en orden (idempotente, sin borrar datos). Con `DB_REMOTA=true` + `DB_SSL=true` sirve para Aiven |
+| `npm run db:respaldar` | Respaldo de la base a `respaldos/*.sql` (sin `mysqldump`; lleva datos personales: no va a Git) |
+| `npm run db:restaurar -- archivo.sql --confirmar` | ⚠️ Reemplaza la base con un respaldo |
+
+`db:setup` con `ADMIN_CONTRASENA` (+ `ADMIN_EMAIL`) hace una **instalación limpia**: solo ese administrador, sin las
+cuentas de prueba de contraseña conocida. Guía completa de publicación y operación: [DESPLIEGUE.md](DESPLIEGUE.md).
 
 Node no está en el PATH del sistema: abrir la terminal con
 `export PATH="$LOCALAPPDATA/Programs/nodejs:$PATH"` antes de usar `npm`.
@@ -228,6 +277,7 @@ Node no está en el PATH del sistema: abrir la terminal con
 
 - [ ] `npm run typecheck` sin errores
 - [ ] `npm run lint` sin errores
+- [ ] `npm test` en verde (con MySQL encendido para que corran también las de integración)
 - [ ] `npm run build` compila
 - [ ] Si tocaste `src/theme/theme.ts`, nada quedó con colores/fuentes hardcodeados
 - [ ] Cada consulta de datos filtrada por el alcance del rol (`usuario.alcance`)

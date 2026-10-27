@@ -1,0 +1,63 @@
+name: CI
+
+# Cada push y cada pull request pasan por: tipos → lint → pruebas (con MySQL real) → compilación.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: raiz_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -praiz_ci"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      CI: 'true'
+      # Solo para preparar la base de PRUEBAS (crea gosen_test y la cuenta «gosen»)
+      DB_HOST: 127.0.0.1
+      DB_USUARIO_ROOT: root
+      DB_CONTRASENA_ROOT: raiz_ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tipos
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Preparar base de pruebas
+        run: npm run db:preparar-pruebas
+
+      - name: Pruebas
+        run: npm test
+
+      - name: Compilar
+        run: npm run build
+        env:
+          SECRETO_SESION: secreto-de-ci-solo-para-compilar-0123456789abcdef

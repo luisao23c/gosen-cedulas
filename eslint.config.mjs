@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Herramientas de asistentes (skills con scripts de terceros ya minificados) y respaldos: no son código de la app
+    ".claude/**",
+    ".github/skills/**",
+    "respaldos/**",
   ]),
 ]);
 

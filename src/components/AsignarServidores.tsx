@@ -12,7 +12,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import GroupAddIcon from '@mui/icons-material/GroupAdd'
+import GroupAddIcon from '@mui/icons-material/GroupAddOutlined'
 import { asignarServidores } from '@/features/ministerio/eventos'
 import { inicialesDe } from '@/lib/nombres'
 import { Avatar } from '@mui/material'

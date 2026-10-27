@@ -1,5 +1,5 @@
 import { Alert, Button, Chip, Paper, Stack, Typography } from '@mui/material'
-import EventAvailableIcon from '@mui/icons-material/EventAvailable'
+import EventAvailableIcon from '@mui/icons-material/EventAvailableOutlined'
 import { exigirSesion } from '@/lib/auth/guardas'
 import { listarMisTurnos } from '@/lib/db/eventos'
 import { listarPrestamos } from '@/lib/db/prestamos'
@@ -39,6 +39,20 @@ export default async function PaginaMisTurnos() {
 
   const filas: FilaListado[] = turnos.map(({ evento, turno }) => {
     const futuro = evento.fecha >= hoy
+    const marcarLlegada = (variante: 'grande' | 'icono') => (
+      <AccionLlegada
+        eventoId={evento.id}
+        fechaEvento={evento.fecha}
+        horaLlegada={evento.horaLlegada}
+        puntoEvento={
+          evento.ubicacion.latitud != null && evento.ubicacion.longitud != null
+            ? { latitud: evento.ubicacion.latitud, longitud: evento.ubicacion.longitud }
+            : null
+        }
+        llegoEn={turno.llegoEn}
+        variante={variante}
+      />
+    )
     return {
       id: turno.id,
       href: `/panel/ministerio/eventos/${evento.id}`,
@@ -86,6 +100,11 @@ export default async function PaginaMisTurnos() {
           },
         },
       ],
+      // El paso que toca, a la vista en el teléfono (sin tener que deslizar la fila): primero confirmar y,
+      // ya confirmado, marcar la llegada el día del evento
+      accionVisible: futuro ? (
+        turno.confirmado ? marcarLlegada('grande') : <AccionConfirmar eventoId={evento.id} confirmado={false} comoBoton />
+      ) : undefined,
       acciones: (
         <>
           {futuro && !turno.confirmado ? (
@@ -94,23 +113,7 @@ export default async function PaginaMisTurnos() {
           {futuro && turno.confirmado ? (
             <AccionConfirmar eventoId={evento.id} confirmado />
           ) : null}
-          {futuro && turno.confirmado ? (
-            <AccionLlegada
-              eventoId={evento.id}
-              fechaEvento={evento.fecha}
-              horaLlegada={evento.horaLlegada}
-              puntoEvento={
-                evento.ubicacion.latitud != null && evento.ubicacion.longitud != null
-                  ? {
-                      latitud: evento.ubicacion.latitud,
-                      longitud: evento.ubicacion.longitud,
-                    }
-                  : null
-              }
-              llegoEn={turno.llegoEn}
-              variante="icono"
-            />
-          ) : null}
+          {futuro && turno.confirmado ? marcarLlegada('icono') : null}
         </>
       ),
     }
@@ -127,7 +130,7 @@ export default async function PaginaMisTurnos() {
 
       {prestamos.length > 0 ? (
         <Stack spacing={1.5}>
-          <Typography variant="h5" component="h2">
+          <Typography variant="h4" component="h2">
             Equipo a mi cargo
           </Typography>
           {prestamos.map((prestamo) => {

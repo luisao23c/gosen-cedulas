@@ -21,14 +21,9 @@
  */
 
 import mysql from 'mysql2/promise'
+import { configuracionAdmin } from './conexion-admin.mjs'
 
-const CONFIG = {
-  host: process.env.DB_HOST ?? '127.0.0.1',
-  port: Number(process.env.DB_PUERTO ?? 3306),
-  user: process.env.DB_USUARIO_ROOT ?? 'root',
-  password: process.env.DB_CONTRASENA_ROOT ?? '',
-  database: process.env.DB_NOMBRE ?? 'gosen',
-}
+const CONFIG = configuracionAdmin()
 
 /** Columnas del domicilio escrito que se sustituyen por el punto del mapa. */
 const COLUMNAS_DOMICILIO = ['calle', 'numero', 'colonia', 'ciudad', 'estado', 'cp']

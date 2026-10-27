@@ -1,7 +1,7 @@
 'use client'
 
 import { Button, MenuItem, Stack, TextField, Typography } from '@mui/material'
-import KeyboardReturnIcon from '@mui/icons-material/KeyboardReturn'
+import KeyboardReturnIcon from '@mui/icons-material/KeyboardReturnOutlined'
 import { avisarDevolucion } from '@/features/ministerio/acciones'
 import { CONSERVACIONES, ETIQUETAS_CONSERVACION } from '@/types/domain'
 import DialogoFormulario from '@/components/DialogoFormulario'

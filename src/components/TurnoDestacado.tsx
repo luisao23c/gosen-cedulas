@@ -2,11 +2,11 @@
 
 import type { ReactNode } from 'react'
 import { Box, Chip, Stack, Typography } from '@mui/material'
-import PlaceIcon from '@mui/icons-material/Place'
-import ScheduleIcon from '@mui/icons-material/Schedule'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
-import { degradados, radios, sombras } from '@/theme/theme'
+import PlaceIcon from '@mui/icons-material/PlaceOutlined'
+import ScheduleIcon from '@mui/icons-material/ScheduleOutlined'
+import CheckCircleIcon from '@mui/icons-material/CheckCircleOutlined'
+import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUncheckedOutlined'
+import { colores, degradados, radios, sombras } from '@/theme/theme'
 
 /**
  * El turno que toca atender ahora, en grande y con su acción a la mano.
@@ -57,7 +57,7 @@ export default function TurnoDestacado({
         p: { xs: 2, sm: 3 },
         borderRadius: `${radios.extra}px`,
         backgroundImage: degradados.marca,
-        color: 'primary.contrastText',
+        color: colores.textoSobreMarca,
         boxShadow: sombras.media,
       }}
     >

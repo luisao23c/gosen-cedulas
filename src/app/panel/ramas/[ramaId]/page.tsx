@@ -1,5 +1,5 @@
 import { Box, Chip, Paper, Stack, Typography } from '@mui/material'
-import AccountTreeIcon from '@mui/icons-material/AccountTree'
+import AccountTreeIcon from '@mui/icons-material/AccountTreeOutlined'
 import ListadoResponsivo, { type FilaListado } from '@/components/ListadoResponsivo'
 import { notFound, redirect } from 'next/navigation'
 import { exigirRol } from '@/lib/auth/guardas'
@@ -177,7 +177,7 @@ export default async function PaginaRama({ params }: { params: Promise<{ ramaId:
         sx={{ justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' } }}
       >
         <Box>
-          <Typography variant="h5" component="h2">
+          <Typography variant="h4" component="h2">
             Células de la rama
           </Typography>
           <Typography variant="body2" color="text.secondary">

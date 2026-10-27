@@ -1,16 +1,8 @@
 'use client'
 
-import {
-  FormControlLabel,
-  IconButton,
-  MenuItem,
-  Stack,
-  Switch,
-  TextField,
-  Tooltip,
-} from '@mui/material'
-import EditIcon from '@mui/icons-material/Edit'
-import EventIcon from '@mui/icons-material/Event'
+import { Button, FormControlLabel, MenuItem, Stack, Switch, TextField } from '@mui/material'
+import EditIcon from '@mui/icons-material/EditOutlined'
+import EventIcon from '@mui/icons-material/EventOutlined'
 import { guardarEvento, editarEvento } from '@/features/ministerio/eventos'
 import type { AccionFormulario, OpcionMinisterio } from '@/features/tipos'
 import type { UbicacionMarcada } from '@/components/CampoUbicacion'
@@ -57,16 +49,22 @@ export default function FormularioEvento({
   return (
     <>
       {esEdicion ? (
-        <Tooltip title="Editar evento">
-          <IconButton color="primary" onClick={abrir} aria-label="Editar evento">
-            <EditIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        // Con texto: un lápiz suelto no dice qué edita (DISENO.md §5)
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<EditIcon fontSize="small" />}
+          onClick={abrir}
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          Editar evento
+        </Button>
       ) : (
         <AccionPrincipal etiqueta="Nuevo evento" icono={<EventIcon />} alPulsar={abrir} />
       )}
 
       <DialogoFormulario
+        completa
         abierto={abierto}
         titulo={esEdicion ? 'Editar evento' : 'Nuevo evento'}
         descripcion="Después se arma la lista de quién sirve en ese evento."

@@ -1,5 +1,5 @@
 import { Stack } from '@mui/material'
-import EventIcon from '@mui/icons-material/Event'
+import EventIcon from '@mui/icons-material/EventOutlined'
 import { tieneEquipoACargo } from '@/lib/db/prestamos'
 import { exigirRol } from '@/lib/auth/guardas'
 import { puede, rolPuede } from '@/lib/auth/permisos'

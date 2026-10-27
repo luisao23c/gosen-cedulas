@@ -1,5 +1,5 @@
 import { Stack } from '@mui/material'
-import TuneIcon from '@mui/icons-material/Tune'
+import TuneIcon from '@mui/icons-material/TuneOutlined'
 import { exigirRol } from '@/lib/auth/guardas'
 import { puede } from '@/lib/auth/permisos'
 import { listarCampos, usosDeCampos } from '@/lib/db/campos'

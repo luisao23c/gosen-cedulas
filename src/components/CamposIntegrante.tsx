@@ -1,6 +1,9 @@
 'use client'
 
-import { Box, Divider, FormControlLabel, Stack, Switch, TextField, Typography } from '@mui/material'
+import { useState } from 'react'
+import { Box, Button, Collapse, Divider, FormControlLabel, Stack, Switch, TextField, Typography } from '@mui/material'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMoreOutlined'
+import ExpandLessIcon from '@mui/icons-material/ExpandLessOutlined'
 import type { Integrante } from '@/types/domain'
 import CampoUbicacion, { type UbicacionMarcada } from '@/components/CampoUbicacion'
 
@@ -92,6 +95,16 @@ export default function CamposIntegrante({
    */
   autoenfocarNombre?: boolean
 }) {
+  // «Más datos» arranca cerrado al crear; al editar se abre solo si la persona ya tiene algo ahí
+  const tieneMasDatos = Boolean(
+    inicial?.origen.ciudad ||
+      inicial?.origen.estado ||
+      inicial?.hizoEncuentro ||
+      inicial?.bautizado ||
+      inicial?.notas,
+  )
+  const [masDatos, setMasDatos] = useState(tieneMasDatos)
+
   return (
     <Stack spacing={3} sx={{ mt: 1 }}>
       <Seccion titulo="Datos personales">
@@ -114,6 +127,7 @@ export default function CamposIntegrante({
             label="Apellido materno (opcional)"
             defaultValue={inicial?.apellidoMaterno ?? ''}
           />
+          <TextField name="telefono" label="Teléfono" defaultValue={inicial?.telefono ?? ''} type="tel" />
           <CampoFecha
             name="fechaNacimiento"
             label="Fecha de nacimiento"
@@ -135,54 +149,68 @@ export default function CamposIntegrante({
         {despuesDeUbicacion ? <Box sx={{ mt: 2 }}>{despuesDeUbicacion}</Box> : null}
       </Seccion>
 
-      <Seccion titulo="De dónde es">
-        <Box sx={rejilla}>
-          <TextField
-            name="origenCiudad"
-            label="Ciudad de origen"
-            defaultValue={inicial?.origen.ciudad ?? ''}
-          />
-          <TextField
-            name="origenEstado"
-            label="Estado de origen"
-            defaultValue={inicial?.origen.estado ?? ''}
-          />
-        </Box>
-      </Seccion>
+      {/* Lo que casi nunca se llena al registrar a alguien nuevo: plegado, pero sigue en el formulario */}
+      <Box>
+        <Button
+          size="small"
+          onClick={() => setMasDatos((valor) => !valor)}
+          endIcon={masDatos ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          aria-expanded={masDatos}
+        >
+          Más datos (origen, encuentro, bautizo, notas)
+        </Button>
+        <Collapse in={masDatos}>
+          <Stack spacing={3} sx={{ pt: 2 }}>
+          <Seccion titulo="De dónde es">
+            <Box sx={rejilla}>
+              <TextField
+                name="origenCiudad"
+                label="Ciudad de origen"
+                defaultValue={inicial?.origen.ciudad ?? ''}
+              />
+              <TextField
+                name="origenEstado"
+                label="Estado de origen"
+                defaultValue={inicial?.origen.estado ?? ''}
+              />
+            </Box>
+          </Seccion>
 
-      <Seccion titulo="Encuentro y bautizo">
-        <Box sx={rejilla}>
-          <Interruptor
-            name="hizoEncuentro"
-            label="Hizo encuentro"
-            marcado={inicial?.hizoEncuentro}
-          />
-          <Interruptor name="bautizado" label="Está bautizado" marcado={inicial?.bautizado} />
-          <CampoFecha
-            name="fechaEncuentro"
-            label="Fecha del encuentro"
-            valor={inicial?.fechaEncuentro ?? null}
-          />
-          <CampoFecha
-            name="fechaBautizo"
-            label="Fecha del bautizo"
-            valor={inicial?.fechaBautizo ?? null}
-          />
-        </Box>
-      </Seccion>
+          <Seccion titulo="Encuentro y bautizo">
+            <Box sx={rejilla}>
+              <Interruptor
+                name="hizoEncuentro"
+                label="Hizo encuentro"
+                marcado={inicial?.hizoEncuentro}
+              />
+              <Interruptor name="bautizado" label="Está bautizado" marcado={inicial?.bautizado} />
+              <CampoFecha
+                name="fechaEncuentro"
+                label="Fecha del encuentro"
+                valor={inicial?.fechaEncuentro ?? null}
+              />
+              <CampoFecha
+                name="fechaBautizo"
+                label="Fecha del bautizo"
+                valor={inicial?.fechaBautizo ?? null}
+              />
+            </Box>
+          </Seccion>
 
-      <Seccion titulo="Contacto y notas">
-        <Box sx={rejilla}>
-          <TextField name="telefono" label="Teléfono" defaultValue={inicial?.telefono ?? ''} />
-          <TextField
-            name="notas"
-            label="Notas"
-            multiline
-            minRows={2}
-            defaultValue={inicial?.notas ?? ''}
-          />
-        </Box>
-      </Seccion>
+          <Seccion titulo="Notas">
+            <Box sx={rejilla}>
+              <TextField
+                name="notas"
+                label="Notas"
+                multiline
+                minRows={2}
+                defaultValue={inicial?.notas ?? ''}
+              />
+            </Box>
+          </Seccion>
+          </Stack>
+        </Collapse>
+      </Box>
     </Stack>
   )
 }

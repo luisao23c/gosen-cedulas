@@ -14,9 +14,9 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import EditIcon from '@mui/icons-material/Edit'
-import AddModeratorIcon from '@mui/icons-material/AddModerator'
-import CheckIcon from '@mui/icons-material/Check'
+import EditIcon from '@mui/icons-material/EditOutlined'
+import AddModeratorIcon from '@mui/icons-material/AddModeratorOutlined'
+import CheckIcon from '@mui/icons-material/CheckOutlined'
 import { guardarRol, editarRol, borrarRol } from '@/features/roles/acciones'
 import { ESTADO_INICIAL, type AccionFormulario } from '@/features/tipos'
 import {

@@ -1,9 +1,9 @@
 import { Alert, Button, Stack, Typography } from '@mui/material'
-import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism'
-import Inventory2Icon from '@mui/icons-material/Inventory2'
-import EventIcon from '@mui/icons-material/Event'
-import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
-import EventAvailableIcon from '@mui/icons-material/EventAvailable'
+import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivismOutlined'
+import Inventory2Icon from '@mui/icons-material/Inventory2Outlined'
+import EventIcon from '@mui/icons-material/EventOutlined'
+import SwapHorizIcon from '@mui/icons-material/SwapHorizOutlined'
+import EventAvailableIcon from '@mui/icons-material/EventAvailableOutlined'
 import AccionConfirmar from '@/components/AccionConfirmar'
 import AccionLlegada from '@/components/AccionLlegada'
 import TarjetaDato from '@/components/TarjetaDato'
@@ -266,7 +266,7 @@ export default async function PaginaMinisterio() {
       {/* Quien sirve en un solo ministerio no necesita una lista con uno solo */}
       {puedeCrear || puedeEditar || ministerios.length !== 1 ? (
         <Stack spacing={1}>
-          <Typography variant="h5" component="h2">
+          <Typography variant="h4" component="h2">
             Ministerios
           </Typography>
           <ListadoResponsivo

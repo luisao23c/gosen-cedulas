@@ -14,7 +14,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import ChecklistIcon from '@mui/icons-material/Checklist'
+import ChecklistIcon from '@mui/icons-material/ChecklistOutlined'
 import { useState, useTransition } from 'react'
 import { consultarPaseDeListaAccion, guardarPaseDeListaAccion } from '@/features/asistencia/acciones'
 import {

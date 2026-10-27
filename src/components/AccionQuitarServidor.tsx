@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button, IconButton, Tooltip } from '@mui/material'
-import PersonRemoveIcon from '@mui/icons-material/PersonRemove'
+import PersonRemoveIcon from '@mui/icons-material/PersonRemoveOutlined'
 import { quitarServidor } from '@/features/ministerio/eventos'
 import { ESTADO_INICIAL } from '@/features/tipos'
 import { useAviso } from '@/components/AvisoProvider'

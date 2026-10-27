@@ -483,6 +483,22 @@ que salió para este evento», solo para quien puede ver préstamos).
   las piezas compartidas del módulo (secciones y «¿es esta sección?») viven en `src/lib/ministerio.ts`,
   aparte de `NavegacionMinisterio.tsx`.
 
+### Móvil como app (2026-10-26)
+
+Barra superior con contexto (`CabeceraApp`: volver, título al desplazar, «+» de la acción principal), hojas inferiores con arrastre para cerrar, jalar para actualizar, control segmentado en píldoras, divisores con sangría, esqueleto de carga con la forma real, manifest con atajos y metadatos de iOS. Reglas en [DISENO.md §8](DISENO.md).
+
+### Sistema de diseño profesional (2026-10-26)
+
+Revisión de diseño completa (ver [DISENO.md](DISENO.md)): lienzo claro con tarjetas blancas, escala tipográfica real (títulos Minion 40/32/24/20 px que bajan solos en el teléfono, cuerpo Creato 16/15 px), radios 8/12/16/24, botones sólidos sin degradado, campos de 52 px con foco de 2 px, chips tonales sin contorno, barras planas con línea fina, tablas con cabecera sobria y acciones fijas a la derecha, y **todos los iconos en estilo contorno** (`…Outlined`). `AccionPrincipal` va a la derecha en escritorio.
+
+### Células e integrantes más simples (2026-10-26)
+
+La ficha de la célula va en este orden: resumen en una línea → pase de lista → integrantes (cada fila con **Llamar** y **Editar** visibles) → un desplegable «Dónde se reúne y a quién le sirve» (el mapa solo se carga al abrirlo). El formulario del integrante pide arriba nombre, apellidos, teléfono, nacimiento y ubicación; origen, encuentro, bautizo y notas van en «Más datos» (plegados, pero siguen en el formulario). El de la célula junta día y hora y pliega «A quién le sirve». `CeldaListado.soloTabla` deja fuera del teléfono los datos largos (dirección, origen).
+
+### Inicio por tareas y acciones visibles (2026-10-26)
+
+El Inicio ya no es un tablero de contadores: arriba va **«Qué sigue»** (`BandejaPendientes`): turnos por confirmar, equipo por recoger o recibir, eventos de hoy, pase de lista de hoy y cumpleaños de la semana, cada uno con su verbo y su enlace; después atajos («Ir a») y las cifras compactas. En las listas del teléfono, la acción que más toca (`FilaListado.accionVisible`: «Prestar», «Recibir», «Confirmar entrega») se ve dentro de la fila en vez de estar detrás del deslizamiento. El formulario de préstamo pide solo equipo y persona; el resto va en «Más opciones».
+
 ### 7.8 Campos diferenciadores y recomendación en Lobby (2026-10-20)
 
 **Ranking del Lobby (2026-10-21).** Las células salen numeradas (1 = la que mejor le queda). Cada una tiene un puntaje 0–100 = criterios cumplidos (70 %; los obligatorios pesan el doble) + cercanía (30 %, baja a 0 a 15 km) — `puntuarCandidata` y `compararCandidatas` en `lib/campos.ts`. Las que fallan un obligatorio van después de las que cumplen. Cada tarjeta muestra qué cumple (✓) y qué le falta (✗, en rojo si es obligatorio), no solo «cumple 2 de 3». Sin respuestas o sin punto, esa parte queda neutra.
@@ -550,6 +566,47 @@ app entera sin que quede un solo hex suelto contradiciéndolo.
   tokens de `radios` (`radio()`).
 - Los colores de estado (éxito, advertencia, error) **no** cambian con la marca: significan lo
   mismo siempre.
+
+### 7.10 Pruebas, seguridad y puesta en producción (2026-10-26)
+
+Pedido del usuario: *«súbeme todo a 9»* (tras calificar la app con 7/10). Lo que se hizo y por qué:
+
+- **Pruebas** (`vitest`, `npm test`): `pruebas/unidad` (permisos y alcance, ranking del Lobby, fases del préstamo,
+  fechas y cumpleaños, validaciones Zod, token/secreto/límite/contraseñas) y `pruebas/integracion` (capa de datos real
+  contra MySQL **`gosen_test`**: ciclo completo de préstamos, eventos y turnos, cuentas y roles contra el catálogo,
+  límite de intentos). Se saltan solas si no hay MySQL; se niegan a correr contra una base que no se llame «*test*».
+  CI en `.github/workflows/ci.yml` (tipos → lint → pruebas con MySQL 8.4 → build).
+- **Bug real que encontraron las pruebas**: `listarMisTurnos` seleccionaba `e.id` y `s.id` (y las coordenadas del
+  evento y de la llegada) con el mismo nombre de columna, así que `evento.id` era el id **del turno**. Se veía bien en
+  los datos de demo porque los ids coincidían; con datos reales el enlace de «Mis turnos» llevaba a otro evento. Ahora
+  cada columna del turno lleva alias.
+- **Seguridad**: el secreto de sesión **falla cerrado** en producción (antes solo avisaba y firmaba con un secreto
+  público del repositorio); límite de 5 intentos por correo / 30 por IP cada 15 min (tabla `intento_login`, migración
+  `db:migrar-seguridad`); tiempo de respuesta igual exista o no el correo; contraseñas nuevas de 10+ con letras y números;
+  cabeceras `CSP`, `X-Frame-Options`, HSTS, `nosniff`, `Permissions-Policy` y sin `X-Powered-By`. Verificado en un build de
+  producción: CSP sin violaciones (mapa y teselas cargan), 6.º intento bloqueado, login sin secreto rechazado.
+- **Producción**: `GET /api/salud`, error en español con «Código del error» (`digest`) y registro JSON de errores
+  (`instrumentation.ts`), `db:respaldar`/`db:restaurar` (probado: el checksum de 8 tablas es idéntico tras un ciclo
+  completo, incluso alterando datos entre medio), `db:migrar-todo` (todas las migraciones aceptan TLS y bases gestionadas)
+  e instalación limpia con `ADMIN_CONTRASENA` (sin cuentas de contraseña conocida). Guía: [DESPLIEGUE.md](DESPLIEGUE.md).
+- **Modo oscuro** (Auto / Claro / Oscuro, ver [DISENO.md §9](DISENO.md)): `colores` pasó a ser referencias a variables CSS
+  (`--g-*`) con dos juegos de valores (`VALORES_CLAROS` / `VALORES_OSCUROS`) y MUI conmuta con `data-dark`/`data-light` vía
+  `InitColorSchemeScript`, así que no hay destello ni hace falta repintar con JS. Los ~77 usos de `colores.*` en el código siguieron
+  funcionando sin tocarlos. Verificado en el navegador: Auto con el sistema en oscuro, oscuro guardado y claro guardado, sin avisos de
+  hidratación, en móvil y escritorio. Lección: tras muchas ediciones de `theme.ts` el servidor de desarrollo acumula avisos de
+  hidratación falsos; reiniciarlo antes de creerlos.
+- **Sin conexión (solo armazón)**: `public/sw.js` guarda archivos estáticos y la página `/offline`; las pantallas siempre van a la red
+  y, sin red, se muestra `/offline`. No guarda datos privados ni reenvía capturas. Cabecera `no-cache` para `sw.js` en `next.config.ts`;
+  `RegistroServiceWorker` lo registra solo en producción; `AvisoSinConexion` avisa dentro del panel (verificado simulando `offline`).
+  **Sin verificar de extremo a extremo**: el navegador integrado no admite service workers (ni uno vacío se registra), así que la
+  interceptación real quedó cubierta solo por 6 pruebas de la lógica (`sw.test.ts`). Probarlo en un Chrome/teléfono real antes de confiar.
+- **Revisión de diseño en móvil** (con el manual): los márgenes negativos de filtros y pestañas no se aplicaban dentro de un `Stack`
+  (quedaban 16 px más adentro) → `alBorde`; «Prestados» truncado; menú de cuenta con el único elemento resaltado; pin de ubicación solo en
+  su renglón y lápiz suelto en la ficha del evento; y **la acción principal del servidor (confirmar / marcar llegada) estaba escondida
+  tras el deslizamiento** en «Mi servicio» → ahora va a la vista (`accionVisible`). Manual: [docs/manual/MANUAL.md](docs/manual/MANUAL.md).
+- **Límites conocidos** (a propósito, documentados): las sesiones ya emitidas siguen válidas hasta caducar aunque se
+  cambie la contraseña (desactivar la cuenta sí las corta); sin doble factor; sin respaldos automáticos (el plan gratuito
+  de la base no los trae).
 
 ## 8. Decisiones tomadas
 
@@ -734,3 +791,5 @@ tabla y las columnas); después roles, integrantes, ubicaciones, asistencia, min
 | 2026-10-15 | Corregido al verificarlo: **el botón «Marcar mi llegada» se quedaba girando para siempre** cuando el navegador no respondía la ubicación (aviso de permisos pendiente): `AccionLlegada` pone su propio tiempo máximo de 12 s y avisa «No pudimos leer tu ubicación…». También: la fila de préstamo en el teléfono **no mostraba el estado en que volvió** el equipo (el chip ahora dice «Devuelto · con algún detalle» y se tiñe de advertencia), el diálogo del encargado mostraba la fecha en crudo («2026-10-18») y la confirmación en primera persona («Confirmo que voy») aparecía cuando la hacía el encargado por otro (ahora «Confirmar que va»). |
 | 2026-10-15 | Ajustes de semántica en la ficha del evento: el turno **propio** se confirma y se checa en primera persona y sin pedir `evento:checar` (lo autoriza la asignación, igual que en «Mis turnos»), mientras que el de otro va con las acciones del encargado. Y `FormularioMinisterio`: el selector de encargado pasó a **controlado** (MUI avisaba «uncontrolled Select changing its default value» al refrescarse la lista después de guardar). |
 | 2026-10-09 | **Rediseño de la interfaz y de la interacción**. `theme.ts` pasa de tener solo la paleta a un sistema de tokens (`radios`, `sombras`, `movimiento`, `degradados`, `fuentes.numeros`, `colores.tintes/veloMarca`) y a estilar todos los componentes MUI (botones píldora con degradado, campos con aro de foco, tablas con cabecera en mayúsculas, diálogos, menús, tooltips, avisos, esqueletos). Armazón nuevo: barra superior que arranca tras el menú lateral, menú con marca/secciones/sesión al pie, navegación inferior con píldora del icono activo. Pantallas: inicio con portada y cifras accionables, login en dos columnas, fichas de rama y célula con miga y resumen, listados con avatar de iniciales, contador de resultados, atajo «/», vacíos con icono y `prefers-reduced-motion`. Verificado con typecheck/lint/build en 0 y revisión visual a 390 px y 1280 px de todas las pantallas. |
+| 2026-10-26 | **Pruebas + CI + seguridad + producción** (ver §7.10): vitest con 140 pruebas (unidad e integración con MySQL), GitHub Actions, secreto de sesión que falla cerrado, límite de intentos de login, CSP y cabeceras, `/api/salud`, respaldos, `db:migrar-todo`, instalación limpia y `DESPLIEGUE.md`. Las pruebas destaparon el bug de `listarMisTurnos` (id del turno en lugar del del evento). |
+| 2026-10-27 | **Modo oscuro** (Auto/Claro/Oscuro, contraste AA probado), **revisión de diseño en móvil** (ver §7.10), **manual de uso** con 28 capturas, **armazón sin conexión** (`sw.js`, `/offline`, aviso) y limpieza del lint. Verificación final: typecheck 0 · lint 0 · 185 pruebas · build ✓. Pendiente de comprobar en un navegador real: el registro del service worker. |

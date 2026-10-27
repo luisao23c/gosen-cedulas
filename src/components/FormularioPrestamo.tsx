@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import { formatearFecha } from '@/lib/fechas'
-import { IconButton, MenuItem, Stack, TextField, Tooltip } from '@mui/material'
-import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
-import AddIcon from '@mui/icons-material/Add'
+import { Button, Collapse, IconButton, MenuItem, Stack, TextField, Tooltip } from '@mui/material'
+import SwapHorizIcon from '@mui/icons-material/SwapHorizOutlined'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMoreOutlined'
+import ExpandLessIcon from '@mui/icons-material/ExpandLessOutlined'
+import AddIcon from '@mui/icons-material/AddOutlined'
 import { guardarPrestamo } from '@/features/ministerio/acciones'
 import type { MiembroMinisterio } from '@/lib/db/ministerios'
 import { CONSERVACIONES, ETIQUETAS_CONSERVACION } from '@/types/domain'
@@ -41,6 +43,7 @@ export default function FormularioPrestamo({
   eventos = [],
   equipoIdInicial,
   comoIcono = false,
+  comoBoton = false,
 }: {
   equipos: EquipoPrestable[]
   /** Integrantes de los ministerios a los que se puede prestar (se filtran por el equipo elegido) */
@@ -51,6 +54,8 @@ export default function FormularioPrestamo({
   equipoIdInicial?: number
   /** En la fila de un equipo: botón de icono en vez de la acción principal */
   comoIcono?: boolean
+  /** Botón pequeño con texto, para dentro de una fila de lista del teléfono */
+  comoBoton?: boolean
 }) {
   const { abierto, abrir, cerrar, error, pendiente, enviar } = useFormularioDialogo(
     guardarPrestamo,
@@ -58,6 +63,7 @@ export default function FormularioPrestamo({
   )
 
   const sinEquipos = equipos.length === 0
+  const [masOpciones, setMasOpciones] = useState(false)
   const [equipoId, setEquipoId] = useState(equipoIdInicial != null ? String(equipoIdInicial) : '')
   // Solo se ofrecen los eventos del mismo ministerio que el equipo elegido
   const ministerioDelEquipo = equipos.find((equipo) => String(equipo.id) === equipoId)?.ministerioId
@@ -66,7 +72,11 @@ export default function FormularioPrestamo({
 
   return (
     <>
-      {comoIcono ? (
+      {comoBoton ? (
+        <Button size="small" variant="contained" startIcon={<SwapHorizIcon />} onClick={abrir}>
+          Prestar
+        </Button>
+      ) : comoIcono ? (
         <Tooltip title="Prestar este equipo">
           <IconButton color="primary" onClick={abrir} aria-label="Prestar este equipo">
             <SwapHorizIcon fontSize="small" />
@@ -145,6 +155,20 @@ export default function FormularioPrestamo({
             ))}
           </TextField>
 
+          {/* Lo de siempre (equipo y persona) va arriba; el resto casi nunca cambia y se esconde. Los
+              campos siguen en el formulario aunque estén plegados, con sus valores por defecto. */}
+          <Button
+            size="small"
+            onClick={() => setMasOpciones((valor) => !valor)}
+            endIcon={masOpciones ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            sx={{ alignSelf: 'flex-start' }}
+            aria-expanded={masOpciones}
+          >
+            Más opciones (evento, estado, notas)
+          </Button>
+
+          <Collapse in={masOpciones}>
+          <Stack spacing={2}>
           <TextField
             select
             key={ministerioDelEquipo ?? 'sin-equipo'}
@@ -201,6 +225,8 @@ export default function FormularioPrestamo({
             minRows={2}
             placeholder="Para qué evento sale, con quién va, batería cargada…"
           />
+          </Stack>
+          </Collapse>
         </Stack>
       </DialogoFormulario>
     </>

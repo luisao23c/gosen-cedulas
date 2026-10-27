@@ -21,24 +21,34 @@ import {
   Tooltip,
   Typography,
   useMediaQuery,
+  useScrollTrigger,
   useTheme,
 } from '@mui/material'
-import DashboardIcon from '@mui/icons-material/Dashboard'
-import AccountTreeIcon from '@mui/icons-material/AccountTree'
-import AssignmentIcon from '@mui/icons-material/Assignment'
-import PersonPinCircleIcon from '@mui/icons-material/PersonPinCircle'
-import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivism'
-import GroupIcon from '@mui/icons-material/Group'
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
-import TuneIcon from '@mui/icons-material/Tune'
-import LogoutIcon from '@mui/icons-material/Logout'
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
+import DashboardIcon from '@mui/icons-material/DashboardOutlined'
+import AccountTreeIcon from '@mui/icons-material/AccountTreeOutlined'
+import AssignmentIcon from '@mui/icons-material/AssignmentOutlined'
+import PersonPinCircleIcon from '@mui/icons-material/PersonPinCircleOutlined'
+import VolunteerActivismIcon from '@mui/icons-material/VolunteerActivismOutlined'
+import GroupIcon from '@mui/icons-material/GroupOutlined'
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettingsOutlined'
+import TuneIcon from '@mui/icons-material/TuneOutlined'
+import LogoutIcon from '@mui/icons-material/LogoutOutlined'
+import MoreHorizIcon from '@mui/icons-material/MoreHorizOutlined'
+import ArrowBackIcon from '@mui/icons-material/ArrowBackOutlined'
+import AddIcon from '@mui/icons-material/AddOutlined'
 import { tienePermiso, type Accion, type Recurso } from '@/lib/auth/permisos'
 import { inicialesDe } from '@/lib/nombres'
 import { salir } from '@/features/auth/acciones'
 import LogoGosen from '@/components/LogoGosen'
+import SelectorApariencia from '@/components/SelectorApariencia'
 import AvisoProvider from '@/components/AvisoProvider'
-import { medidas, movimiento, radios } from '@/theme/theme'
+import AvisoSinConexion from '@/components/AvisoSinConexion'
+import { CabeceraProvider, useCabecera } from '@/components/CabeceraApp'
+import JalarParaActualizar from '@/components/JalarParaActualizar'
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeftOutlined'
+import ChevronRightIcon from '@mui/icons-material/ChevronRightOutlined'
+import { useMenuCompacto } from '@/components/useMenuCompacto'
+import { medidas, movimiento, radios, sombras } from '@/theme/theme'
 
 interface ElementoMenu {
   etiqueta: string
@@ -132,7 +142,7 @@ function esActiva(ruta: string, destino: string): boolean {
  * El menú se filtra con los MISMOS permisos que aplican las páginas y el
  * servidor (lib/auth/permisos.ts), para no enseñar atajos a los que no puedes entrar.
  */
-export default function PanelChrome({
+function PanelChromeInterno({
   usuario,
   children,
 }: {
@@ -164,6 +174,15 @@ export default function PanelChrome({
   const enMas = visibles.filter((elemento) => !enBarra.includes(elemento))
   const activoEnMas = enMas.some((elemento) => esActiva(ruta, elemento.ruta))
   const [masAbierto, setMasAbierto] = useState(false)
+  // Escritorio: menú expandido o contraído a solo iconos (se recuerda en el navegador)
+  const [compacto, alternarCompacto] = useMenuCompacto()
+  const anchoMenu = compacto ? medidas.anchoMenuCompacto : medidas.anchoMenu
+
+  // Barra de app del teléfono: lo que cada pantalla le cuenta (título, volver, acción principal)
+  const { titulo, volverHref, accion, ejecutarAccion } = useCabecera()
+  // El título pasa del cuerpo de la pantalla a la barra cuando se desplaza
+  const desplazado = useScrollTrigger({ disableHysteresis: true, threshold: 36 })
+  const esInicio = ruta === '/panel'
 
   const cerrarSesion = () => {
     setAncla(null)
@@ -183,24 +202,37 @@ export default function PanelChrome({
   const menu = (
     <Box
       sx={{
-        width: medidas.anchoMenu,
+        width: anchoMenu,
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
         bgcolor: 'background.paper',
+        overflowX: 'hidden',
       }}
     >
       <Box
         sx={{
           height: medidas.altoBarraSuperior.escritorio,
-          px: 2.5,
+          px: compacto ? 1 : 2.5,
           display: 'flex',
           alignItems: 'center',
+          justifyContent: compacto ? 'center' : 'space-between',
+          gap: 1,
           borderBottom: 1,
           borderColor: 'divider',
         }}
       >
-        {marca}
+        {compacto ? null : marca}
+        <Tooltip title={compacto ? 'Expandir menú' : 'Contraer menú'} placement="right">
+          <IconButton
+            size="small"
+            onClick={alternarCompacto}
+            aria-label={compacto ? 'Expandir menú' : 'Contraer menú'}
+            aria-expanded={!compacto}
+          >
+            {compacto ? <ChevronRightIcon fontSize="small" /> : <ChevronLeftIcon fontSize="small" />}
+          </IconButton>
+        </Tooltip>
       </Box>
 
       <List sx={{ px: 1.5, pt: 2, display: 'flex', flexDirection: 'column', gap: 0.5, overflowY: 'auto' }}>
@@ -209,7 +241,7 @@ export default function PanelChrome({
           const abreGrupo = elemento.grupo != null && elemento.grupo !== visibles[indice - 1]?.grupo
           return (
             <Box key={elemento.ruta} component="li" sx={{ display: 'contents' }}>
-              {abreGrupo ? (
+              {abreGrupo && !compacto ? (
                 <Typography
                   variant="overline"
                   color="text.secondary"
@@ -218,14 +250,17 @@ export default function PanelChrome({
                   {elemento.grupo}
                 </Typography>
               ) : null}
+            <Tooltip title={compacto ? elemento.etiqueta : ''} placement="right">
             <ListItemButton
               component={Link}
               href={elemento.ruta}
               selected={activo}
               aria-current={activo ? 'page' : undefined}
+              aria-label={compacto ? elemento.etiqueta : undefined}
               sx={{
                 gap: 1,
                 px: 1.5,
+                justifyContent: compacto ? 'center' : 'flex-start',
                 '&.Mui-selected': {
                   bgcolor: 'primary.light',
                   '&:hover': { bgcolor: 'primary.light' },
@@ -247,26 +282,41 @@ export default function PanelChrome({
                 sx={{
                   flex: 1,
                   minWidth: 0,
+                  display: compacto ? 'none' : 'block',
                   fontWeight: activo ? 700 : 500,
-                  color: activo ? 'primary.dark' : 'text.primary',
+                  color: activo ? 'primary.main' : 'text.primary',
                 }}
               >
                 {elemento.etiqueta}
               </Typography>
-              {activo ? (
-                <Box
-                  aria-hidden
-                  sx={{ width: 4, height: 20, borderRadius: `${radios.pill}px`, bgcolor: 'primary.main' }}
-                />
-              ) : null}
             </ListItemButton>
+            </Tooltip>
             </Box>
           )
         })}
       </List>
 
       <Box sx={{ mt: 'auto', p: 1.5 }}>
-        <Paper variant="outlined" sx={{ p: 1.25, display: 'flex', alignItems: 'center', gap: 1.25 }}>
+        {compacto ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+            <Avatar sx={{ width: 36, height: 36 }}>{iniciales}</Avatar>
+            <Tooltip title="Cerrar sesión" placement="right">
+              <IconButton size="small" onClick={cerrarSesion} aria-label="Cerrar sesión">
+                <LogoutIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        ) : null}
+        <Box sx={{ display: compacto ? 'none' : 'block', px: 0.5, pb: 1.5 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+            Apariencia
+          </Typography>
+          <SelectorApariencia />
+        </Box>
+        <Paper
+          variant="outlined"
+          sx={{ p: 1.25, display: compacto ? 'none' : 'flex', alignItems: 'center', gap: 1.25 }}
+        >
           <Avatar sx={{ width: 36, height: 36 }}>{iniciales}</Avatar>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>
@@ -293,8 +343,9 @@ export default function PanelChrome({
         <AppBar
           position="fixed"
           sx={{
-            width: { md: `calc(100% - ${medidas.anchoMenu}px)` },
-            ml: { md: `${medidas.anchoMenu}px` },
+            width: { md: `calc(100% - ${anchoMenu}px)` },
+            ml: { md: `${anchoMenu}px` },
+            transition: `width ${movimiento.normal} ${movimiento.curva}, margin ${movimiento.normal} ${movimiento.curva}`,
             borderBottom: 1,
             borderColor: 'divider',
             pt: 'env(safe-area-inset-top)',
@@ -310,19 +361,70 @@ export default function PanelChrome({
               px: { xs: 2, md: 3 },
             }}
           >
-            {/* En móvil la barra es la única referencia estable: marca + sección */}
-            <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center' }}>
-              {marca}
+            {/* Teléfono: barra de app. Volver (en detalle) · título (al desplazar) · acción · cuenta */}
+            <Box
+              sx={{
+                display: { xs: 'flex', md: 'none' },
+                alignItems: 'center',
+                gap: 0.5,
+                flexGrow: 1,
+                minWidth: 0,
+              }}
+            >
+              {volverHref ? (
+                <IconButton
+                  component={Link}
+                  href={volverHref}
+                  aria-label="Volver"
+                  edge="start"
+                  sx={{ color: 'text.primary' }}
+                >
+                  <ArrowBackIcon />
+                </IconButton>
+              ) : null}
+              {esInicio ? (
+                <LogoGosen alto={20} />
+              ) : (
+                <Typography
+                  variant="h5"
+                  component="p"
+                  noWrap
+                  sx={{
+                    opacity: desplazado ? 1 : 0,
+                    transform: desplazado ? 'none' : 'translateY(6px)',
+                    transition: `opacity ${movimiento.normal} ${movimiento.curva}, transform ${movimiento.normal} ${movimiento.curva}`,
+                  }}
+                >
+                  {titulo ?? seccion}
+                </Typography>
+              )}
             </Box>
 
             <Box sx={{ flexGrow: 1, minWidth: 0, display: { xs: 'none', md: 'block' } }}>
-              <Typography variant="h6" component="h1" noWrap>
+              <Typography variant="subtitle2" component="p" color="text.secondary" noWrap>
                 {seccion}
               </Typography>
             </Box>
 
             {/* Móvil: el avatar abre el menú de cuenta (más seguro que un icono de salir suelto) */}
-            <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center' }}>
+            <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1 }}>
+              {accion ? (
+                <Tooltip title={accion.etiqueta}>
+                  <IconButton
+                    onClick={ejecutarAccion}
+                    aria-label={accion.etiqueta}
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      bgcolor: 'primary.main',
+                      color: 'primary.contrastText',
+                      '&:hover': { bgcolor: 'primary.dark' },
+                    }}
+                  >
+                    <AddIcon />
+                  </IconButton>
+                </Tooltip>
+              ) : null}
               <IconButton
                 onClick={(evento) => setAncla(evento.currentTarget)}
                 aria-label="Cuenta"
@@ -340,7 +442,8 @@ export default function PanelChrome({
                   {iniciales}
                 </Avatar>
               </IconButton>
-              <Menu anchorEl={ancla} open={Boolean(ancla)} onClose={() => setAncla(null)}>
+              {/* disableAutoFocusItem: sin esto «Cerrar sesión» (el único elemento) sale resaltado como pulsado al abrir */}
+              <Menu anchorEl={ancla} open={Boolean(ancla)} onClose={() => setAncla(null)} disableAutoFocusItem>
                 <Box sx={{ px: 2, py: 1.25, minWidth: 220 }}>
                   <Typography variant="subtitle2" noWrap>
                     {usuario.nombre}
@@ -348,6 +451,13 @@ export default function PanelChrome({
                   <Typography variant="caption" color="text.secondary">
                     {usuario.rolNombre}
                   </Typography>
+                </Box>
+                <Divider />
+                <Box sx={{ px: 2, py: 1.25 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+                    Apariencia
+                  </Typography>
+                  <SelectorApariencia />
                 </Box>
                 <Divider />
                 <MenuItem onClick={cerrarSesion} sx={{ minHeight: medidas.zonaTactil, gap: 1.5 }}>
@@ -361,14 +471,23 @@ export default function PanelChrome({
 
         {/* Menú lateral: solo escritorio */}
         {esEscritorio ? (
-          <Box component="nav" aria-label="Secciones" sx={{ width: medidas.anchoMenu, flexShrink: 0 }}>
+          <Box
+            component="nav"
+            aria-label="Secciones"
+            sx={{
+              width: anchoMenu,
+              flexShrink: 0,
+              transition: `width ${movimiento.normal} ${movimiento.curva}`,
+            }}
+          >
             <Drawer
               variant="permanent"
               open
               slotProps={{
                 paper: {
                   sx: {
-                    width: medidas.anchoMenu,
+                    width: anchoMenu,
+                    transition: `width ${movimiento.normal} ${movimiento.curva}`,
                     borderRight: 1,
                     borderColor: 'divider',
                     bgcolor: 'background.paper',
@@ -397,16 +516,19 @@ export default function PanelChrome({
           }}
         >
           {/* `key` por ruta: al cambiar de sección el contenido entra con un fundido corto */}
-          <Box
-            key={ruta}
-            sx={{
-              maxWidth: medidas.anchoMaximoContenido,
-              mx: 'auto',
-              animation: `entradaPagina ${movimiento.normal} ${movimiento.curva} both`,
-            }}
-          >
-            {children}
-          </Box>
+          <JalarParaActualizar>
+            <Box
+              key={ruta}
+              sx={{
+                maxWidth: medidas.anchoMaximoContenido,
+                mx: 'auto',
+                animation: `entradaPagina ${movimiento.normal} ${movimiento.curva} both`,
+              }}
+            >
+              <AvisoSinConexion />
+              {children}
+            </Box>
+          </JalarParaActualizar>
         </Box>
 
         {/* Navegación inferior: solo móvil/tablet (patrón Flutter) */}
@@ -418,15 +540,18 @@ export default function PanelChrome({
               : (enBarra.find((elemento) => esActiva(ruta, elemento.ruta))?.ruta ?? false)
           }
           sx={{
+            // Barra flotante: una píldora separada de los bordes y de la zona segura, con sombra
             position: 'fixed',
-            bottom: 0,
-            left: 0,
-            right: 0,
+            left: medidas.margenNavFlotante,
+            right: medidas.margenNavFlotante,
+            bottom: `calc(${medidas.margenNavFlotante}px + env(safe-area-inset-bottom, 0px))`,
             display: { md: 'none' },
-            height: `calc(${medidas.altoBarraInferior}px + env(safe-area-inset-bottom, 0px))`,
-            borderTop: 1,
+            height: medidas.altoBarraInferior,
+            border: 1,
             borderColor: 'divider',
-            pb: 'env(safe-area-inset-bottom)',
+            borderRadius: `${radios.pill}px`,
+            boxShadow: sombras.alta,
+            overflow: 'hidden',
             zIndex: 'appBar',
           }}
         >
@@ -537,5 +662,14 @@ export default function PanelChrome({
         </Drawer>
       </Box>
     </AvisoProvider>
+  )
+}
+
+/** Estructura del panel con el contexto de la barra de app (ver CabeceraApp.tsx). */
+export default function PanelChrome(propiedades: React.ComponentProps<typeof PanelChromeInterno>) {
+  return (
+    <CabeceraProvider>
+      <PanelChromeInterno {...propiedades} />
+    </CabeceraProvider>
   )
 }

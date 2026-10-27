@@ -1,6 +1,18 @@
-import { Box, Button, Chip, Paper, Stack, Typography } from '@mui/material'
-import AssignmentIcon from '@mui/icons-material/Assignment'
-import PlaceIcon from '@mui/icons-material/Place'
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Box,
+  Button,
+  Chip,
+  Paper,
+  Stack,
+  Typography,
+} from '@mui/material'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMoreOutlined'
+import PhoneIcon from '@mui/icons-material/PhoneOutlined'
+import AssignmentIcon from '@mui/icons-material/AssignmentOutlined'
+import PlaceIcon from '@mui/icons-material/PlaceOutlined'
 import { notFound, redirect } from 'next/navigation'
 import { exigirRol } from '@/lib/auth/guardas'
 import { puede } from '@/lib/auth/permisos'
@@ -29,18 +41,6 @@ const TONO_SITUACION: Record<string, 'success' | 'primary' | 'default'> = {
   VISITANTE: 'primary',
   INACTIVO: 'default',
   EGRESADO: 'default',
-}
-
-/** Dato del resumen: etiqueta arriba, valor debajo. */
-function Dato({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
-  return (
-    <Box sx={{ minWidth: 0 }}>
-      <Typography variant="overline" color="text.secondary">
-        {etiqueta}
-      </Typography>
-      <Box>{children}</Box>
-    </Box>
-  )
 }
 
 export default async function PaginaCelula({ params }: { params: Promise<{ celulaId: string }> }) {
@@ -111,9 +111,12 @@ export default async function PaginaCelula({ params }: { params: Promise<{ celul
               ? '—'
               : `${formatearFecha(integrante.fechaNacimiento)}${edad != null ? ` (${edad} años)` : ''}`,
         },
-        { clave: 'telefono', etiqueta: 'Teléfono', texto: integrante.telefono ?? '—' },
+        // El teléfono, el origen y la dirección completa son para la tabla; en el teléfono el
+        // contacto es el botón «Llamar» de la fila.
+        { clave: 'telefono', etiqueta: 'Teléfono', texto: integrante.telefono ?? '—', soloTabla: true },
         {
           clave: 'origen',
+          soloTabla: true,
           etiqueta: 'De dónde es',
           texto: [integrante.origen.ciudad, integrante.origen.estado]
             .filter(Boolean)
@@ -121,10 +124,35 @@ export default async function PaginaCelula({ params }: { params: Promise<{ celul
         },
         {
           clave: 'ubicacion',
+          soloTabla: true,
           etiqueta: 'Dónde vive',
           texto: integrante.ubicacion.direccion ?? 'Sin ubicación marcada',
         },
       ],
+      // Lo que más se hace con una persona: llamarle o corregir sus datos, a la vista
+      accionVisible:
+        integrante.telefono || puedeEditar ? (
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            {integrante.telefono ? (
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<PhoneIcon />}
+                href={`tel:${integrante.telefono.replace(/[^\d+]/g, '')}`}
+              >
+                Llamar
+              </Button>
+            ) : null}
+            {puedeEditar ? (
+              <FormularioIntegrante
+                comoBoton
+                accion="editar"
+                celulaId={celulaId}
+                inicial={integrante}
+              />
+            ) : null}
+          </Stack>
+        ) : undefined,
       acciones: puedeEditar ? (
         <FormularioIntegrante accion="editar" celulaId={celulaId} inicial={integrante} />
       ) : undefined,
@@ -146,88 +174,24 @@ export default async function PaginaCelula({ params }: { params: Promise<{ celul
         subtitulo={reunion}
       />
 
-      <Paper
-        variant="outlined"
-        sx={{
-          p: { xs: 2, sm: 2.5 },
-          display: 'grid',
-          gap: 2,
-          gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' },
-        }}
-      >
-        <Dato etiqueta="Integrantes">
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {integrantes.length === 0
-              ? 'Ninguno todavía'
-              : `${integrantes.length} en total · ${activos} ${activos === 1 ? 'activo' : 'activos'}`}
-          </Typography>
-        </Dato>
-        <Dato etiqueta="Reunión">
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {reunion}
-          </Typography>
-        </Dato>
-        <Dato etiqueta="Estado">
-          <Chip
-            size="small"
-            label={celula.activa ? 'Activa' : 'Inactiva'}
-            color={celula.activa ? 'success' : 'default'}
-            variant={celula.activa ? 'filled' : 'outlined'}
-          />
-        </Dato>
-      </Paper>
-
-      {puntoCelula ? (
-        <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 } }}>
-          <Stack spacing={1.5}>
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={1.5}
-              sx={{
-                justifyContent: 'space-between',
-                alignItems: { xs: 'flex-start', sm: 'center' },
-              }}
-            >
-              <Box sx={{ minWidth: 0 }}>
-                <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                  <PlaceIcon fontSize="small" color="primary" />
-                  <Typography variant="overline" color="text.secondary">
-                    Dónde se reúne
-                  </Typography>
-                </Stack>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                  {celula.ubicacion.direccion ?? 'Punto marcado, sin dirección resuelta'}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {formatearCoordenadas(puntoCelula.latitud, puntoCelula.longitud)}
-                </Typography>
-              </Box>
-              <Button
-                size="small"
-                variant="outlined"
-                href={enlaceMapa(puntoCelula.latitud, puntoCelula.longitud)}
-                target="_blank"
-                rel="noopener"
-              >
-                Abrir en el mapa
-              </Button>
-            </Stack>
-            <MapaUbicacion
-              latitud={puntoCelula.latitud}
-              longitud={puntoCelula.longitud}
-              soloLectura
-              etiqueta={`Mapa de la célula ${celula.nombre}`}
-            />
-          </Stack>
-        </Paper>
-      ) : null}
-
-      <FormularioCriteriosCelula
-        celulaId={celulaId}
-        campos={campos}
-        criterios={criterios}
-        puedeEditar={puedeEditarCriterios}
-      />
+      {/* Resumen en una línea: la reunión ya sale en el subtítulo de arriba */}
+      <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
+        <Chip
+          size="small"
+          variant="outlined"
+          label={
+            integrantes.length === 0
+              ? 'Sin integrantes todavía'
+              : `${integrantes.length} ${integrantes.length === 1 ? 'integrante' : 'integrantes'} · ${activos} ${activos === 1 ? 'activo' : 'activos'}`
+          }
+        />
+        <Chip
+          size="small"
+          label={celula.activa ? 'Activa' : 'Inactiva'}
+          color={celula.activa ? 'success' : 'default'}
+          variant={celula.activa ? 'filled' : 'outlined'}
+        />
+      </Stack>
 
       {veAsistencia ? (
         <PaseDeLista
@@ -252,14 +216,9 @@ export default async function PaginaCelula({ params }: { params: Promise<{ celul
         sx={{ justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' } }}
       >
         <Box>
-          <Typography variant="h5" component="h2">
+          <Typography variant="h4" component="h2">
             Integrantes
           </Typography>
-          {integrantes.length > 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              Toca una fila para ver el detalle o desliza a la izquierda para editar.
-            </Typography>
-          ) : null}
         </Box>
         {/* En móvil la acción principal es el botón flotante del propio formulario */}
         {puedeCrear ? <FormularioIntegrante accion="crear" celulaId={celulaId} /> : null}
@@ -283,6 +242,78 @@ export default async function PaginaCelula({ params }: { params: Promise<{ celul
             : 'Esta célula todavía no tiene integrantes.'
         }
       />
+      {/* Datos que se consultan poco: abajo y plegados (el mapa solo se carga al abrirlos) */}
+      <Accordion
+        variant="outlined"
+        disableGutters
+        slotProps={{ transition: { unmountOnExit: true } }}
+        sx={{ '&::before': { display: 'none' } }}
+      >
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Box>
+            <Typography variant="subtitle1">Dónde se reúne y a quién le sirve</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Mapa de la célula y los criterios para recomendarla en el Lobby.
+            </Typography>
+          </Box>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Stack spacing={3}>
+          {puntoCelula ? (
+            <Paper variant="outlined" sx={{ p: { xs: 2, sm: 2.5 } }}>
+              <Stack spacing={1.5}>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={1.5}
+                  sx={{
+                    justifyContent: 'space-between',
+                    alignItems: { xs: 'flex-start', sm: 'center' },
+                  }}
+                >
+                  <Box sx={{ minWidth: 0 }}>
+                    <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                      <PlaceIcon fontSize="small" color="primary" />
+                      <Typography variant="overline" color="text.secondary">
+                        Dónde se reúne
+                      </Typography>
+                    </Stack>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {celula.ubicacion.direccion ?? 'Punto marcado, sin dirección resuelta'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {formatearCoordenadas(puntoCelula.latitud, puntoCelula.longitud)}
+                    </Typography>
+                  </Box>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    href={enlaceMapa(puntoCelula.latitud, puntoCelula.longitud)}
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    Abrir en el mapa
+                  </Button>
+                </Stack>
+                <MapaUbicacion
+                  latitud={puntoCelula.latitud}
+                  longitud={puntoCelula.longitud}
+                  soloLectura
+                  etiqueta={`Mapa de la célula ${celula.nombre}`}
+                />
+              </Stack>
+            </Paper>
+          ) : null}
+
+          <FormularioCriteriosCelula
+            celulaId={celulaId}
+            campos={campos}
+            criterios={criterios}
+            puedeEditar={puedeEditarCriterios}
+          />
+
+          </Stack>
+        </AccordionDetails>
+      </Accordion>
     </Stack>
   )
 }

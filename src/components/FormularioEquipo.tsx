@@ -1,8 +1,8 @@
 'use client'
 
 import { IconButton, MenuItem, Stack, TextField, Tooltip } from '@mui/material'
-import EditIcon from '@mui/icons-material/Edit'
-import Inventory2Icon from '@mui/icons-material/Inventory2'
+import EditIcon from '@mui/icons-material/EditOutlined'
+import Inventory2Icon from '@mui/icons-material/Inventory2Outlined'
 import { guardarEquipo, editarEquipo } from '@/features/ministerio/acciones'
 import type { AccionFormulario, OpcionMinisterio } from '@/features/tipos'
 import { ESTATUS_EQUIPO, ETIQUETAS_ESTATUS_EQUIPO, type EstatusEquipo } from '@/types/domain'

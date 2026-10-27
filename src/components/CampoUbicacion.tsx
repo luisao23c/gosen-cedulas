@@ -17,9 +17,9 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import MyLocationIcon from '@mui/icons-material/MyLocation'
-import CloseIcon from '@mui/icons-material/Close'
-import SearchIcon from '@mui/icons-material/Search'
+import MyLocationIcon from '@mui/icons-material/MyLocationOutlined'
+import CloseIcon from '@mui/icons-material/CloseOutlined'
+import SearchIcon from '@mui/icons-material/SearchOutlined'
 import MapaUbicacion from '@/components/MapaUbicacion'
 import { mapa } from '@/theme/theme'
 import {

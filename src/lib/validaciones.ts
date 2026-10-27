@@ -105,10 +105,14 @@ const email = z
   .refine((valor) => /.+@.+\..+/.test(valor), { message: 'Correo no válido' })
   .transform((valor) => valor.toLowerCase())
 
+/** Contraseña nueva: 10 caracteres o más, con letras y números. (El login no la exige: las cuentas viejas siguen entrando.) */
 const clave = z
   .string({ message: 'Falta la contraseña' })
-  .min(8, { message: 'La contraseña necesita al menos 8 caracteres' })
+  .min(10, { message: 'La contraseña necesita al menos 10 caracteres' })
   .max(200, { message: 'Contraseña demasiado larga' })
+  .refine((valor) => /\p{L}/u.test(valor) && /\d/.test(valor), {
+    message: 'La contraseña debe combinar letras y números',
+  })
 
 const nombrePropio = z
   .string({ message: 'Falta el nombre' })
@@ -185,14 +189,7 @@ export const esquemaUsuarioEdicion = z.object({
   ministerioId: numeroOpcional,
   activa: z.coerce.boolean(),
   /** Vacía = no cambiar la contraseña (reset opcional por parte del admin). */
-  contrasena: z.preprocess(
-    vacioANulo,
-    z
-      .string({ message: 'Contraseña no válida' })
-      .min(8, { message: 'La contraseña necesita al menos 8 caracteres' })
-      .max(200, { message: 'Contraseña demasiado larga' })
-      .nullable(),
-  ),
+  contrasena: z.preprocess(vacioANulo, clave.nullable()),
 })
 
 /** Rol: nombre, alcance y la lista de permisos «recurso:accion» marcados. */

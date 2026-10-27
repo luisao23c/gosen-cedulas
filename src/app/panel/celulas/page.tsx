@@ -1,5 +1,5 @@
 import { Stack } from '@mui/material'
-import AssignmentIcon from '@mui/icons-material/Assignment'
+import AssignmentIcon from '@mui/icons-material/AssignmentOutlined'
 import { exigirRol } from '@/lib/auth/guardas'
 import { puede, rolPuede } from '@/lib/auth/permisos'
 import { listarCelulas } from '@/lib/db/celulas'
@@ -100,6 +100,7 @@ export default async function PaginaCelulas() {
       },
       {
         clave: 'ubicacion',
+        soloTabla: true,
         etiqueta: 'Ubicación',
         texto: celula.ubicacion.direccion ?? 'Sin ubicación marcada',
       },

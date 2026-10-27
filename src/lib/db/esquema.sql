@@ -13,7 +13,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- `cedula` es el nombre ANTERIOR de `celula` (ver npm run db:migrar-celulas):
 -- se incluye en el borrado para que una base a medio migrar no deje una tabla
 -- huérfana con claves ajenas apuntando a la que sí se va a crear.
-DROP TABLE IF EXISTS rol_permiso, servidor_evento, evento, prestamo, equipo, ministerio,
+DROP TABLE IF EXISTS intento_login, rol_permiso, servidor_evento, evento, prestamo, equipo, ministerio,
   celula_criterio_opcion, celula_criterio, integrante_respuesta, campo_opcion, campo,
   asistencia, reunion, integrante, usuario, celula, cedula, rama, rol;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -365,6 +365,21 @@ CREATE TABLE IF NOT EXISTS usuario (
   KEY idx_usuario_rama (rama_id),
   KEY idx_usuario_celula (celula_id),
   KEY idx_usuario_ministerio (ministerio_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- INTENTO_LOGIN — inicios de sesión fallidos recientes (límite de intentos).
+--   `clave` es «c:correo» o «i:ip». Se cuentan los de los últimos minutos;
+--   los de más de un día se barren solos. Sin claves ajenas a propósito:
+--   también cuenta los intentos de correos que no existen.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS intento_login (
+  id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  clave     VARCHAR(220)    NOT NULL,
+  creado_en DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_intento_clave (clave, creado_en),
+  KEY idx_intento_creado (creado_en)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
