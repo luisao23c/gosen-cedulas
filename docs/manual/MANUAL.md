@@ -179,12 +179,13 @@ ministerio) y desactívalas cuando alguien se va (la sesión se cierra al instan
 Los roles son **datos**: puedes crear los tuyos eligiendo hasta dónde llegan (organización, rama, célula o ministerio) y qué
 puede hacer cada uno. Nadie puede dar un rol con más poder del que él mismo tiene.
 
-### Campos
+### Filtros
 
-![Campos](img/28-campos.jpg)
+![Filtros](img/28-campos.jpg)
 
-Las **preguntas** del Lobby («Estado civil», «Edad»…). Cada célula declara cuáles acepta en su ficha → *Dónde se reúne y a
-quién le sirve*; con eso se arma la recomendación.
+Las **preguntas** que usa cada célula para decir a quién le sirve («Estado civil», «Edad»…) y que se contestan en el Lobby.
+Cada célula declara cuáles acepta en su ficha → *Dónde se reúne y a quién le sirve*; con eso se arma la recomendación.
+*(La captura todavía muestra el título anterior, «Campos».)*
 
 ---
 

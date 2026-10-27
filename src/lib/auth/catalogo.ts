@@ -163,7 +163,7 @@ export const CATALOGO: Record<Recurso, DefinicionRecurso> = {
     acciones: ['ver', 'crear', 'editar', 'eliminar', 'asignar', 'checar'],
   },
   campo: {
-    etiqueta: 'Campos diferenciadores',
+    etiqueta: 'Filtros',
     descripcion:
       'Preguntas del catálogo (estado civil, edad…) con las que cada célula dice a quién le sirve.',
     acciones: ['ver', 'crear', 'editar', 'eliminar'],

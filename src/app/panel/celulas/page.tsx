@@ -6,6 +6,7 @@ import { listarCelulas } from '@/lib/db/celulas'
 import { listarRamas } from '@/lib/db/ramas'
 import { listarUsuarios } from '@/lib/db/usuarios'
 import { listarCampos, listarCriteriosDeCelulas } from '@/lib/db/campos'
+import { formatearHora } from '@/lib/fechas'
 import { etiquetaDeRango, queAcepta } from '@/lib/campos'
 import { DIAS_SEMANA, type CampoDiferenciador, type CriterioCelula } from '@/types/domain'
 import type { OpcionRama } from '@/features/tipos'
@@ -95,7 +96,7 @@ export default async function PaginaCelulas() {
         etiqueta: 'Reunión',
         texto:
           celula.diaSemana != null
-            ? `${DIAS_SEMANA[celula.diaSemana]}${celula.hora ? ` · ${celula.hora}` : ''}`
+            ? `${DIAS_SEMANA[celula.diaSemana]}${celula.hora ? ` · ${formatearHora(celula.hora)}` : ''}`
             : 'Sin día fijo',
       },
       {

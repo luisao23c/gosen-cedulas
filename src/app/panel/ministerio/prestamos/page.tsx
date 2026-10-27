@@ -6,7 +6,7 @@ import { listarEquipos } from '@/lib/db/equipos'
 import { listarMiembros, listarMinisterios } from '@/lib/db/ministerios'
 import { listarPrestamos, tieneEquipoACargo } from '@/lib/db/prestamos'
 import { listarEventos, listarMisTurnos } from '@/lib/db/eventos'
-import { formatearFecha, hoyISO } from '@/lib/fechas'
+import { formatearFecha, formatearHora, hoyISO } from '@/lib/fechas'
 import { horaDeInstante } from '@/lib/servicio'
 import { ETIQUETAS_CONSERVACION } from '@/types/domain'
 import { inicialesDe } from '@/lib/nombres'
@@ -116,14 +116,14 @@ export default async function PaginaPrestamos({
         {
           clave: 'salida',
           etiqueta: 'Salió',
-          texto: `${formatearFecha(prestamo.prestadoEn)} · ${horaDeInstante(prestamo.prestadoEn) ?? ''}`,
+          texto: `${formatearFecha(prestamo.prestadoEn)} · ${formatearHora(horaDeInstante(prestamo.prestadoEn))}`,
           conEtiqueta: true,
         },
         {
           clave: 'regreso',
           etiqueta: 'Volvió',
           texto: prestamo.devueltoEn
-            ? `${formatearFecha(prestamo.devueltoEn)} · ${horaDeInstante(prestamo.devueltoEn) ?? ''}`
+            ? `${formatearFecha(prestamo.devueltoEn)} · ${formatearHora(horaDeInstante(prestamo.devueltoEn))}`
             : '—',
           conEtiqueta: true,
         },

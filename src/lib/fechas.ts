@@ -42,21 +42,39 @@ export function fechaDeLaReunion(diaSemana: number | null, ahora: Date = new Dat
   return hoyISO(reunion)
 }
 
-/** Fecha ISO corta → «miércoles 8 de octubre» (para encabezar la reunión). */
-export function formatearFechaConDia(fecha: string): string {
+function fechaLarga(fecha: string, conAnio: boolean): string {
   const partes = fecha.slice(0, 10).split('-').map(Number)
   if (partes.length !== 3 || partes.some((numero) => !Number.isFinite(numero))) return fecha
   const [anio, mes, dia] = partes
   const nombreDia = DIAS_SEMANA[new Date(anio, mes - 1, dia).getDay()]
-  return `${nombreDia} ${dia} de ${MESES[mes - 1] ?? ''}`.trim()
+  return `${nombreDia} ${dia} de ${MESES[mes - 1] ?? ''}${conAnio ? ` de ${anio}` : ''}`.trim()
 }
 
-/** Fecha ISO corta → «dd/mm/aaaa». Vacío → «—». */
+/**
+ * Fecha ISO corta → «Miércoles 8 de octubre» (para encabezar una reunión o un evento). El año solo
+ * se añade cuando no es el actual: «Miércoles 3 de noviembre de 2027».
+ */
+export function formatearFechaConDia(fecha: string): string {
+  const anio = Number(fecha.slice(0, 4))
+  return fechaLarga(fecha, Number.isFinite(anio) && anio !== new Date().getFullYear())
+}
+
+/** Fecha ISO corta → «Miércoles 3 de noviembre de 2000» (siempre con año). Vacío → «—». */
 export function formatearFecha(fecha: string | null | undefined): string {
   if (!fecha) return '—'
   const [anio, mes, dia] = fecha.slice(0, 10).split('-')
   if (!anio || !mes || !dia) return '—'
-  return `${dia}/${mes}/${anio}`
+  return fechaLarga(fecha, true)
+}
+
+/** «15:00» → «3 p. m.» · «09:30» → «9:30 a. m.» · «00:00» → «12 a. m.». Vacío → «—». */
+export function formatearHora(hora: string | null | undefined): string {
+  if (!hora) return '—'
+  const [horas, minutos] = hora.slice(0, 5).split(':').map(Number)
+  if (!Number.isFinite(horas) || !Number.isFinite(minutos)) return hora
+  const sufijo = horas >= 12 ? 'p. m.' : 'a. m.'
+  const enDoce = horas % 12 === 0 ? 12 : horas % 12
+  return minutos === 0 ? `${enDoce} ${sufijo}` : `${enDoce}:${String(minutos).padStart(2, '0')} ${sufijo}`
 }
 
 /* ── Cumpleaños ─────────────────────────────────────────────── */

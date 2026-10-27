@@ -12,6 +12,8 @@
  *    `aInstante()` (ISO de reloj de pared, terminado en Z para dejarlo claro).
  */
 
+import { formatearHora } from '@/lib/fechas'
+
 /** Texto `AAAA-MM-DDTHH:MM` (input datetime-local) → `AAAA-MM-DD HH:MM:SS` para MySQL. */
 export function instanteParaSQL(valor: string): string {
   const limpio = valor.trim().replace('T', ' ')
@@ -95,8 +97,9 @@ export function etiquetaLlegada(
   fechaEvento: string,
   horaLlegada: string | null | undefined,
 ): string {
-  const hora = horaDeInstante(llegoEn)
-  if (!hora) return 'Sin registrar'
+  const horaCruda = horaDeInstante(llegoEn)
+  if (!horaCruda) return 'Sin registrar'
+  const hora = formatearHora(horaCruda)
   const puntualidad = puntualidadDe(llegoEn, fechaEvento, horaLlegada)
   if (!puntualidad) return `Llegó ${hora}`
   if (puntualidad.puntual) return `A tiempo · ${hora}`

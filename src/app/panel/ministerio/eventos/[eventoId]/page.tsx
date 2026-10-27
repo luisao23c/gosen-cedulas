@@ -7,7 +7,7 @@ import { puede, rolPuede } from '@/lib/auth/permisos'
 import { buscarEvento, listarAsignables, listarTurnos } from '@/lib/db/eventos'
 import { listarPrestamos } from '@/lib/db/prestamos'
 import { chipDeFase, fasePrestamo } from '@/lib/prestamo'
-import { formatearFechaConDia, formatearFecha } from '@/lib/fechas'
+import { formatearFechaConDia, formatearFecha, formatearHora } from '@/lib/fechas'
 import { distanciaKm, distanciaLegible } from '@/lib/geo'
 import { etiquetaLlegada, horaDeInstante, tonoDeLlegada } from '@/lib/servicio'
 import { inicialesDe } from '@/lib/nombres'
@@ -185,7 +185,7 @@ export default async function PaginaEvento({
         etiqueta="Evento de servicio"
         icono={<EventIcon />}
         volver={{ href: '/panel/ministerio/eventos', etiqueta: 'Eventos' }}
-        subtitulo={`${formatearFechaConDia(evento.fecha)}${evento.horaLlegada ? ` · deben estar a las ${evento.horaLlegada}` : ' · sin hora de llegada definida'}`}
+        subtitulo={`${formatearFechaConDia(evento.fecha)}${evento.horaLlegada ? ` · deben estar a las ${formatearHora(evento.horaLlegada)}` : ' · sin hora de llegada definida'}`}
       >
         <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
           <AsignarServidores
@@ -229,7 +229,7 @@ export default async function PaginaEvento({
               <Chip
                 size="small"
                 color="primary"
-                label={`Deben estar a las ${evento.horaLlegada}`}
+                label={`Deben estar a las ${formatearHora(evento.horaLlegada)}`}
                 sx={{ alignSelf: 'flex-start' }}
               />
             ) : (

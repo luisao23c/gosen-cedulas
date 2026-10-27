@@ -21,7 +21,7 @@ import { listarIntegrantes } from '@/lib/db/integrantes'
 import { buscarRama } from '@/lib/db/ramas'
 import { obtenerPaseDeLista } from '@/lib/db/asistencia'
 import { DIAS_SEMANA, ETIQUETAS_SITUACION, nombreCompleto } from '@/types/domain'
-import { calcularEdad, fechaDeLaReunion, formatearFecha } from '@/lib/fechas'
+import { calcularEdad, fechaDeLaReunion, formatearFecha, formatearHora } from '@/lib/fechas'
 import { inicialesDe } from '@/lib/nombres'
 import { coordenadasDe, enlaceMapa, formatearCoordenadas } from '@/lib/geo'
 import EncabezadoPagina from '@/components/EncabezadoPagina'
@@ -161,7 +161,7 @@ export default async function PaginaCelula({ params }: { params: Promise<{ celul
 
   const reunion =
     celula.diaSemana != null
-      ? `${DIAS_SEMANA[celula.diaSemana]}${celula.hora ? ` · ${celula.hora}` : ''}`
+      ? `${DIAS_SEMANA[celula.diaSemana]}${celula.hora ? ` · ${formatearHora(celula.hora)}` : ''}`
       : 'Sin día fijo'
 
   return (

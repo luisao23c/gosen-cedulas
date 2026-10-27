@@ -250,7 +250,7 @@ export default function RegistroLobby({
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
                       {respuestas.length > 0
                         ? 'Sin el punto en el mapa no se puede medir la distancia: el orden de abajo sale de las respuestas.'
-                        : 'Marca el punto en el mapa o contesta los campos de arriba: con eso se ordenan las células.'}
+                        : 'Marca el punto en el mapa o contesta las preguntas de arriba: con eso se ordenan las células.'}
                     </Typography>
                   ) : null}
                 <RadioGroup

@@ -17,7 +17,7 @@ import { fasePrestamo } from '@/lib/prestamo'
 import { listarEquipos } from '@/lib/db/equipos'
 import { listarEventos, listarMisTurnos } from '@/lib/db/eventos'
 import { listarUsuarios } from '@/lib/db/usuarios'
-import { formatearFechaConDia, hoyISO } from '@/lib/fechas'
+import { formatearFechaConDia, formatearHora, hoyISO } from '@/lib/fechas'
 import { inicialesDe } from '@/lib/nombres'
 import AccionBaja from '@/components/AccionBaja'
 import EncabezadoPagina from '@/components/EncabezadoPagina'
@@ -166,7 +166,7 @@ export default async function PaginaMinisterio() {
       {proximo ? (
         <TurnoDestacado
           titulo={proximo.evento.nombre}
-          cuando={`${proximo.evento.fecha === hoy ? 'Hoy' : formatearFechaConDia(proximo.evento.fecha)}${proximo.evento.horaLlegada ? ` · ${proximo.evento.horaLlegada}` : ''}`}
+          cuando={`${proximo.evento.fecha === hoy ? 'Hoy' : formatearFechaConDia(proximo.evento.fecha)}${proximo.evento.horaLlegada ? ` · ${formatearHora(proximo.evento.horaLlegada)}` : ''}`}
           lugar={proximo.evento.ubicacion.direccion}
           rol={proximo.turno.funcion}
           confirmado={proximo.turno.confirmado}

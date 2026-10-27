@@ -4,6 +4,7 @@ import { exigirRol } from '@/lib/auth/guardas'
 import { listarCelulas } from '@/lib/db/celulas'
 import { listarRamas } from '@/lib/db/ramas'
 import { listarCampos, listarCriteriosDeCelulas } from '@/lib/db/campos'
+import { formatearHora } from '@/lib/fechas'
 import { DIAS_SEMANA } from '@/types/domain'
 import EncabezadoPagina from '@/components/EncabezadoPagina'
 import RegistroLobby, { type CelulaCercana } from '@/features/lobby/RegistroLobby'
@@ -43,7 +44,7 @@ export default async function PaginaLobby() {
     rama: nombreDeRama.get(celula.ramaId) ?? `Rama #${celula.ramaId}`,
     reunion:
       celula.diaSemana != null
-        ? `${DIAS_SEMANA[celula.diaSemana]}${celula.hora ? ` · ${celula.hora}` : ''}`
+        ? `${DIAS_SEMANA[celula.diaSemana]}${celula.hora ? ` · ${formatearHora(celula.hora)}` : ''}`
         : 'Sin día fijo',
     latitud: celula.ubicacion.latitud,
     longitud: celula.ubicacion.longitud,

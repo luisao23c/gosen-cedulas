@@ -111,7 +111,7 @@ const ELEMENTOS: ElementoMenu[] = [
   },
   // Catálogo de preguntas con las que se recomienda una célula en Lobby
   {
-    etiqueta: 'Campos',
+    etiqueta: 'Filtros',
     ruta: '/panel/campos',
     icono: <TuneIcon />,
     recurso: 'campo',

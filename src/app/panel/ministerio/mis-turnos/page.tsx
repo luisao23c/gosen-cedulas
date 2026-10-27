@@ -6,7 +6,7 @@ import { listarPrestamos } from '@/lib/db/prestamos'
 import { chipDeFase, fasePrestamo, SIGUIENTE_PASO_PERSONA } from '@/lib/prestamo'
 import AccionAvisarDevolucion from '@/components/AccionAvisarDevolucion'
 import AccionRecogida from '@/components/AccionRecogida'
-import { formatearFechaConDia, hoyISO } from '@/lib/fechas'
+import { formatearFechaConDia, formatearHora, hoyISO } from '@/lib/fechas'
 import { etiquetaLlegada, tonoDeLlegada } from '@/lib/servicio'
 import AccionConfirmar from '@/components/AccionConfirmar'
 import AccionLlegada from '@/components/AccionLlegada'
@@ -78,7 +78,7 @@ export default async function PaginaMisTurnos() {
         {
           clave: 'hora',
           etiqueta: 'Debo estar',
-          texto: evento.horaLlegada ?? 'Sin hora definida',
+          texto: evento.horaLlegada ? formatearHora(evento.horaLlegada) : 'Sin hora definida',
           conEtiqueta: true,
         },
         {

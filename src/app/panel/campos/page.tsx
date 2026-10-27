@@ -9,7 +9,7 @@ import FormularioCampo from '@/components/FormularioCampo'
 import ListadoResponsivo, { type FilaListado } from '@/components/ListadoResponsivo'
 
 export const instant = false
-export const metadata = { title: 'Campos · Gosen' }
+export const metadata = { title: 'Filtros · Gosen' }
 
 /** Resumen de lo que acepta un campo, en una línea («4 opciones», «18 a 99 años»). */
 function resumenDeCampo(campo: CampoDiferenciador): string {
@@ -49,7 +49,7 @@ export default async function PaginaCampos() {
       id: campo.id,
       avatar: { texto: campo.nombre.slice(0, 2), tono: campo.activo ? 'primary' : 'default' },
       celdas: [
-        { clave: 'nombre', etiqueta: 'Campo', texto: campo.nombre, destacado: true },
+        { clave: 'nombre', etiqueta: 'Filtro', texto: campo.nombre, destacado: true },
         {
           clave: 'descripcion',
           etiqueta: 'Para qué sirve',
@@ -91,20 +91,20 @@ export default async function PaginaCampos() {
   return (
     <Stack spacing={3}>
       <EncabezadoPagina
-        titulo="Campos"
+        titulo="Filtros"
         etiqueta="Organización"
         icono={<TuneIcon />}
         subtitulo={`${campos.length} ${campos.length === 1 ? 'pregunta' : 'preguntas'} en el catálogo, ${activos} ${
           activos === 1 ? 'activa' : 'activas'
-        }. Las células eligen cuáles aceptan; la gente las responde en el registro.`}
+        }. Son las preguntas que usa cada célula para decir a quién le sirve: ella elige cuáles acepta y la gente las responde en el registro.`}
       >
         {puedeCrear ? <FormularioCampo accion="crear" /> : null}
       </EncabezadoPagina>
 
       <ListadoResponsivo
         filas={filas}
-        etiquetas={['Campo', 'Para qué sirve', 'Tipo', 'Acepta', 'Se usa en', 'Estado']}
-        placeholderBuscador="Buscar campo…"
+        etiquetas={['Filtro', 'Para qué sirve', 'Tipo', 'Acepta', 'Se usa en', 'Estado']}
+        placeholderBuscador="Buscar filtro…"
         accionesCabecera={puedeEditar}
         mensajeVacio="Todavía no hay preguntas en el catálogo. Crea la primera: por ejemplo «Estado civil» con sus opciones."
       />

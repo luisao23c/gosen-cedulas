@@ -6,7 +6,7 @@ import { listarEquipos } from '@/lib/db/equipos'
 import { listarMiembros, listarMinisterios } from '@/lib/db/ministerios'
 import { listarPrestamos, tieneEquipoACargo } from '@/lib/db/prestamos'
 import { listarEventos, listarMisTurnos } from '@/lib/db/eventos'
-import { formatearFecha, hoyISO } from '@/lib/fechas'
+import { formatearFecha, formatearHora, hoyISO } from '@/lib/fechas'
 import { horaDeInstante } from '@/lib/servicio'
 import { ETIQUETAS_ESTATUS_EQUIPO, type EstatusEquipo } from '@/types/domain'
 import { inicialesDe } from '@/lib/nombres'
@@ -115,7 +115,7 @@ export default async function PaginaEquipos({
           clave: 'salida',
           etiqueta: 'Salió',
           texto: prestamo
-            ? `${formatearFecha(prestamo.prestadoEn)} · ${horaDeInstante(prestamo.prestadoEn) ?? ''}`
+            ? `${formatearFecha(prestamo.prestadoEn)} · ${formatearHora(horaDeInstante(prestamo.prestadoEn))}`
             : '—',
         },
         {

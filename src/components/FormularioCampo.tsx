@@ -53,7 +53,7 @@ export default function FormularioCampo({
   const accionFormulario: AccionFormulario = esEdicion ? editarCampoAccion : guardarCampoAccion
   const { abierto, abrir, cerrar, error, setError, pendiente, enviar } = useFormularioDialogo(
     accionFormulario,
-    esEdicion ? 'Campo actualizado' : 'Campo creado',
+    esEdicion ? 'Filtro actualizado' : 'Filtro creado',
   )
 
   /** Opciones del formulario; al crear se ofrecen dos renglones vacíos. */
@@ -90,7 +90,7 @@ export default function FormularioCampo({
         return
       }
       cerrar()
-      avisar('Campo eliminado del catálogo')
+      avisar('Filtro eliminado del catálogo')
       router.refresh()
     })
   }
@@ -107,25 +107,25 @@ export default function FormularioCampo({
           ? 'Eliminando…'
           : confirmandoBaja
             ? 'Toca otra vez para eliminar'
-            : 'Eliminar campo'}
+            : 'Eliminar filtro'}
       </Button>
     ) : null
 
   return (
     <>
       {esEdicion ? (
-        <Tooltip title="Editar campo">
-          <IconButton color="primary" onClick={alAbrir} aria-label="Editar campo">
+        <Tooltip title="Editar filtro">
+          <IconButton color="primary" onClick={alAbrir} aria-label="Editar filtro">
             <EditIcon fontSize="small" />
           </IconButton>
         </Tooltip>
       ) : (
-        <AccionPrincipal etiqueta="Nuevo campo" icono={<AddIcon />} alPulsar={alAbrir} />
+        <AccionPrincipal etiqueta="Nuevo filtro" icono={<AddIcon />} alPulsar={alAbrir} />
       )}
 
       <DialogoFormulario
         abierto={abierto}
-        titulo={esEdicion ? 'Editar campo' : 'Nuevo campo'}
+        titulo={esEdicion ? 'Editar filtro' : 'Nuevo filtro'}
         descripcion="La pregunta que las células usan para decir a quién les sirve."
         alCerrar={cerrar}
         alEnviar={enviar}
@@ -139,7 +139,7 @@ export default function FormularioCampo({
         <Stack spacing={2} sx={{ mt: 1 }}>
           <TextField
             name="nombre"
-            label="Nombre del campo"
+            label="Nombre del filtro"
             defaultValue={inicial?.nombre ?? ''}
             required
             autoFocus
@@ -167,7 +167,7 @@ export default function FormularioCampo({
             defaultValue={inicial?.descripcion ?? ''}
             multiline
             minRows={2}
-            placeholder="Para qué sirve este campo al recomendar una célula"
+            placeholder="Para qué sirve este filtro al recomendar una célula"
           />
 
           {tipo === 'SELECT' ? (
@@ -254,7 +254,7 @@ export default function FormularioCampo({
           {esEdicion ? (
             <FormControlLabel
               control={<Switch name="activo" defaultChecked={inicial?.activo ?? true} />}
-              label="Campo activo (aparece en Lobby y en las fichas)"
+              label="Filtro activo (aparece en Lobby y en las fichas)"
             />
           ) : null}
         </Stack>

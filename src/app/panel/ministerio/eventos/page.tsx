@@ -5,7 +5,7 @@ import { exigirRol } from '@/lib/auth/guardas'
 import { puede, rolPuede } from '@/lib/auth/permisos'
 import { listarEventos, listarMisTurnos } from '@/lib/db/eventos'
 import { listarMinisterios } from '@/lib/db/ministerios'
-import { formatearFechaConDia, hoyISO } from '@/lib/fechas'
+import { formatearFechaConDia, formatearHora, hoyISO } from '@/lib/fechas'
 import AccionBaja from '@/components/AccionBaja'
 import EncabezadoPagina from '@/components/EncabezadoPagina'
 import FormularioEvento from '@/components/FormularioEvento'
@@ -67,7 +67,7 @@ export default async function PaginaEventos({
         {
           clave: 'hora',
           etiqueta: 'Deben estar',
-          texto: evento.horaLlegada ?? 'Sin hora de llegada',
+          texto: evento.horaLlegada ? formatearHora(evento.horaLlegada) : 'Sin hora de llegada',
           conEtiqueta: true,
         },
         {

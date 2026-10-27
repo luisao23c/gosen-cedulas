@@ -3,6 +3,7 @@ import {
   fechaDeLaReunion,
   formatearFecha,
   formatearFechaConDia,
+  formatearHora,
   hoyISO,
   proximoCumpleanos,
 } from '@/lib/fechas'
@@ -48,16 +49,28 @@ describe('fechaDeLaReunion', () => {
 })
 
 describe('formatearFecha / formatearFechaConDia', () => {
-  it('dd/mm/aaaa y vacío como raya', () => {
-    expect(formatearFecha('2026-10-08')).toBe('08/10/2026')
-    expect(formatearFecha('2026-10-08T00:00:00.000Z')).toBe('08/10/2026')
+  it('fecha larga con año y vacío como raya', () => {
+    expect(formatearFecha('2026-10-08')).toBe('Jueves 8 de octubre de 2026')
+    expect(formatearFecha('2000-11-03')).toBe('Viernes 3 de noviembre de 2000')
+    expect(formatearFecha('2026-10-08T00:00:00.000Z')).toBe('Jueves 8 de octubre de 2026')
     expect(formatearFecha(null)).toBe('—')
     expect(formatearFecha('')).toBe('—')
     expect(formatearFecha('basura')).toBe('—')
   })
 
-  it('con el día de la semana', () => {
-    expect(formatearFechaConDia('2026-10-08')).toBe('Jueves 8 de octubre')
+  it('con el día de la semana; el año solo si no es el actual', () => {
+    const anioActual = new Date().getFullYear()
+    expect(formatearFechaConDia(`${anioActual}-10-08`)).toMatch(/^\w+ 8 de octubre$/)
+    expect(formatearFechaConDia('2000-11-03')).toBe('Viernes 3 de noviembre de 2000')
+  })
+
+  it('la hora en formato de 12 horas', () => {
+    expect(formatearHora('15:00')).toBe('3 p. m.')
+    expect(formatearHora('09:30')).toBe('9:30 a. m.')
+    expect(formatearHora('12:00')).toBe('12 p. m.')
+    expect(formatearHora('00:05')).toBe('12:05 a. m.')
+    expect(formatearHora('19:00:00')).toBe('7 p. m.')
+    expect(formatearHora(null)).toBe('—')
   })
 
   it('una fecha ilegible se devuelve tal cual (no revienta)', () => {

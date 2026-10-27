@@ -8,6 +8,7 @@ import { buscarRama, nombreLiderDeRama } from '@/lib/db/ramas'
 import { listarCelulas } from '@/lib/db/celulas'
 import { listarUsuarios } from '@/lib/db/usuarios'
 import { listarCampos, listarCriteriosDeCelulas } from '@/lib/db/campos'
+import { formatearHora } from '@/lib/fechas'
 import { DIAS_SEMANA } from '@/types/domain'
 import { inicialesDe } from '@/lib/nombres'
 import { borrarCelula } from '@/features/celulas/acciones'
@@ -67,7 +68,7 @@ export default async function PaginaRama({ params }: { params: Promise<{ ramaId:
         etiqueta: 'Reunión',
         texto:
           celula.diaSemana != null
-            ? `${DIAS_SEMANA[celula.diaSemana]}${celula.hora ? ` · ${celula.hora}` : ''}`
+            ? `${DIAS_SEMANA[celula.diaSemana]}${celula.hora ? ` · ${formatearHora(celula.hora)}` : ''}`
             : 'Sin día fijo',
       },
       {

@@ -21,7 +21,7 @@ import { listarEventos, listarMisTurnos } from '@/lib/db/eventos'
 import { listarPrestamos } from '@/lib/db/prestamos'
 import { fasePrestamo } from '@/lib/prestamo'
 import { cumpleanosProximos, etiquetaFaltan } from '@/lib/cumpleanos'
-import { formatearFechaConDia, hoyISO } from '@/lib/fechas'
+import { formatearFechaConDia, formatearHora, hoyISO } from '@/lib/fechas'
 import { nombreCompleto } from '@/types/domain'
 import { inicialesDe } from '@/lib/nombres'
 import BandejaPendientes, { type Pendiente } from '@/components/BandejaPendientes'
@@ -79,7 +79,7 @@ export default async function Panel() {
       clave: `turno-${turno.id}`,
       icono: <EventAvailableIcon />,
       titulo: `Confirma tu turno: ${evento.nombre}`,
-      detalle: `${evento.fecha === hoy ? 'Hoy' : formatearFechaConDia(evento.fecha)}${evento.horaLlegada ? ` · deben estar a las ${evento.horaLlegada}` : ''}${turno.funcion ? ` · tu rol: ${turno.funcion}` : ''}`,
+      detalle: `${evento.fecha === hoy ? 'Hoy' : formatearFechaConDia(evento.fecha)}${evento.horaLlegada ? ` · deben estar a las ${formatearHora(evento.horaLlegada)}` : ''}${turno.funcion ? ` · tu rol: ${turno.funcion}` : ''}`,
       href: '/panel/ministerio/mis-turnos',
       verbo: 'Confirmar',
       urgente: evento.fecha === hoy,
@@ -139,7 +139,7 @@ export default async function Panel() {
       clave: `lista-${celula.id}`,
       icono: <ChecklistIcon />,
       titulo: `Pasa lista en ${celula.nombre}`,
-      detalle: `Hoy se reúne${celula.hora ? ` a las ${celula.hora}` : ''}.`,
+      detalle: `Hoy se reúne${celula.hora ? ` a las ${formatearHora(celula.hora)}` : ''}.`,
       href: `/panel/celulas/${celula.id}`,
       verbo: 'Pasar lista',
     })

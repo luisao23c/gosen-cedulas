@@ -19,7 +19,7 @@ import LoginIcon from '@mui/icons-material/LoginOutlined'
 import ReplayIcon from '@mui/icons-material/ReplayOutlined'
 import { marcarLlegada } from '@/features/ministerio/eventos'
 import { ESTADO_INICIAL } from '@/features/tipos'
-import { formatearFechaConDia } from '@/lib/fechas'
+import { formatearFechaConDia, formatearHora } from '@/lib/fechas'
 import { useAviso } from '@/components/AvisoProvider'
 import DialogoFormulario from '@/components/DialogoFormulario'
 import { distanciaKm, distanciaLegible, redondearCoordenada } from '@/lib/geo'
@@ -224,7 +224,7 @@ export default function AccionLlegada({
               type="datetime-local"
               defaultValue={llegoEn ? llegoEn.slice(0, 16) : ahoraLocal()}
               slotProps={{ inputLabel: { shrink: true } }}
-              helperText={`El evento es el ${formatearFechaConDia(fechaEvento)}${horaLlegada ? ` y la hora de llegada era ${horaLlegada}` : ''}.`}
+              helperText={`El evento es el ${formatearFechaConDia(fechaEvento)}${horaLlegada ? ` y la hora de llegada era ${formatearHora(horaLlegada)}` : ''}.`}
             />
 
             <Box>
